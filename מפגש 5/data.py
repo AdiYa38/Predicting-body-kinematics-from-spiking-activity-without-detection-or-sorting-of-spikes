@@ -62,7 +62,7 @@ def import_position_data(eeg_data, x_chan, y_chan, arena_diameter):
   
     return x, y, x_in, y_in
 
-def get_tetrode_spike_times(clu_file_name, res_file_name, tetrode_id, pos_sample_rate, res_sample_rate):
+def get_tetrode_spike_times(clu_file_name, res_file_name, tetrode_id,pos_sample_rate, res_sample_rate):
     res_file =  res_file_name + (str)(tetrode_id)
     clu_file = clu_file_name + (str)(tetrode_id)
 
@@ -78,7 +78,7 @@ def get_tetrode_spike_times(clu_file_name, res_file_name, tetrode_id, pos_sample
     spike_times = spike_times[mask]
     clu_labels = clu_labels[mask]
     
-    return (spike_times*pos_sample_rate/res_sample_rate).astype(int), clu_labels
+    return (spike_times*pos_sample_rate/res_sample_rate).astype(np.int64), clu_labels
 
 
 def get_cell_spike_times(clu_labels, spike_times, cell_id):
@@ -95,3 +95,6 @@ def get_cell_spike_times(clu_labels, spike_times, cell_id):
     """
     mask = clu_labels == cell_id
     return spike_times[mask] if np.any(mask) else np.array([])  # return empty array if no spikes found 
+
+
+
