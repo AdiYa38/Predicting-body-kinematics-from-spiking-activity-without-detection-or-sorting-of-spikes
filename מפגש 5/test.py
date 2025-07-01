@@ -5,7 +5,7 @@ import data
 
 # --- Simulation Parameters ---
 ARENA_DIAMETER = 100
-BIN_SIZE = 0.5
+BIN_SIZE = 2
 RES_SAMPLING_RATE = 20000
 POS_SAMPLING_RATE = 1250
 X_CHANNEL = 124
@@ -28,7 +28,7 @@ print(res[-1])
 
 # --- Run Analysis Pipeline ---
 # 1. Create the base grid
-bins_grid = heatmaps.create_bins()
+bins_grid = heatmaps.create_bins(BIN_SIZE,ARENA_DIAMETER)
 
 # 2. Calculate spike and time maps
 spike_map_raw, _ = heatmaps.bins_spikes_count(bins_grid, res, x_values, y_values, BIN_SIZE, ARENA_DIAMETER)
