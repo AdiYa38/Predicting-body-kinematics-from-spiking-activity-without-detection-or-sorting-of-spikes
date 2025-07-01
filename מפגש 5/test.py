@@ -31,7 +31,7 @@ print(res[-1])
 bins_grid = heatmaps.create_bins(BIN_SIZE,ARENA_DIAMETER)
 
 # 2. Calculate spike and time maps
-spike_map_raw, _ = heatmaps.bins_spikes_count(bins_grid, res, x_values, y_values, BIN_SIZE, ARENA_DIAMETER)
+spike_map_raw, vacants = heatmaps.bins_spikes_count(bins_grid, res, x_values, y_values, BIN_SIZE, ARENA_DIAMETER)
 time_map_raw = heatmaps.calculate_time_in_bin(bins_grid, x_values, y_values, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
 
 # 3. Create smoothing kernel
@@ -40,6 +40,10 @@ gaussian_kernel = heatmaps.create_gaussian_kernel(size=KERNEL_SIZE)
 # 4. Perform smoothing
 spike_map_smoothed = heatmaps.convolve(spike_map_raw, gaussian_kernel)
 time_map_smoothed = heatmaps.convolve(time_map_raw, gaussian_kernel)
+
+# Final rates map
+rates_map = spike_map_smoothed / time_map_smoothed
+final_rates_map = heatmaps.remove_vacants(rates_map, vacants)
 
 # ===================================================================
 # Visualization
@@ -63,7 +67,7 @@ def plot_map(ax, data, title, cmap='jet'):
 plot_map(axes[0, 0], spike_map_raw, "Raw Spike Map")
 plot_map(axes[0, 1], time_map_raw, "Raw Time Map")
 plot_map(axes[1, 0], spike_map_smoothed, "Smoothed Spike Map")
-plot_map(axes[1, 1], time_map_smoothed, "Smoothed Time Map")
+plot_map(axes[1, 1], time_map_smoothed, "Smoothed Time Map")#
 
 plt.tight_layout(rect=[0, 0, 1, 0.96])
 plt.show()
@@ -71,5 +75,12 @@ plt.show()
 # Optional: Plot the kernel separately
 fig_kernel, ax_kernel = plt.subplots(figsize=(5, 5))
 plot_map(ax_kernel, gaussian_kernel, "Gaussian Kernel", cmap='viridis')
+#plt.show()
+
+# Plot final retes map
+fig_rts, rts_ax = plt.subplots(figsize=(5, 5))
+plot_map(rts_ax, final_rates_map, "Smoothed Rates", cmap='viridis')
 plt.show()
+
+
 
