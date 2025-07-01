@@ -4,13 +4,24 @@ import heatmaps
 import data
 
 # --- Simulation Parameters ---
-ARENA_DIAMETER = 80
+ARENA_DIAMETER = 100
 BIN_SIZE = 0.5
-SAMPLING_RATE = 1250
+RES_SAMPLING_RATE = 20000
+POS_SAMPLING_RATE = 1250
+X_CHANNEL = 125
+Y_CHANNEL = 125
+N_CHANNELS = 136
+CELL_ID = 7
+TETRODE_ID = 1
+KERNEL_SIZE = 7
+EEG_FILE = "mp79_17/mP79_17.eeg"
+DTYPE = np.int16
 
 # Load Data
-res = []
-
+eeg_data = data.get_eeg_data(EEG_FILE, DTYPE, N_CHANNELS)
+tet_res, clu = data.get_tetrode_spike_times("mp79_17/mP79_17.clu.", "mp79_17/mP79_17.res.", TETRODE_ID, POS_SAMPLING_RATE, RES_SAMPLING_RATE)
+res = data.get_cell_spike_times(clu, tet_res, CELL_ID)
+x_values, y_values, _, _ = data.import_position_data(eeg_data, X_CHANNEL, Y_CHANNEL, ARENA_DIAMETER)
 
 # --- Run Analysis Pipeline ---
 # 1. Create the base grid
@@ -18,7 +29,7 @@ bins_grid = heatmaps.create_bins()
 
 # 2. Calculate spike and time maps
 spike_map_raw, _ = heatmaps.bins_spikes_count(bins_grid, res, x_values, y_values, BIN_SIZE, ARENA_DIAMETER)
-time_map_raw = heatmaps.calculate_time_in_bin(bins_grid, x_values, y_values, SAMPLING_RATE, BIN_SIZE, ARENA_DIAMETER)
+time_map_raw = heatmaps.calculate_time_in_bin(bins_grid, x_values, y_values, POS_SAMPLING_RATE, BIN_SIZE, ARENA_DIAMETER)
 
 # 3. Create smoothing kernel
 gaussian_kernel = heatmaps.create_gaussian_kernel(size=KERNEL_SIZE)
