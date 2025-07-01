@@ -1,8 +1,8 @@
 import numpy as np
 from scipy.ndimage import convolve
  
-temp_bin_size_cm = 0.5
-arena_curr_diam = 80
+temp_bin_size_cm =10
+arena_curr_diam = 100
 
 def create_bins(bin_size_cm = temp_bin_size_cm, arena_diameter_cm = arena_curr_diam):
 
@@ -72,7 +72,7 @@ def map_coords_to_bin_ids(x_cm, y_cm, bins, bin_size_cm = temp_bin_size_cm, aren
 def bins_spikes_count(bins, res, x_values, y_values, bin_len, arena_diameter):
     
     # Initial matrixes
-    bins_spikes_count = np.zeros_like(bins, dtype=np.int32)
+    bins_spikes_count =  np.copy(bins)
     vacants = np.copy(bins)
     vacants[vacants == 0] = 1
 
