@@ -22,6 +22,9 @@ eeg_data = data.get_eeg_data(EEG_FILE, DTYPE, N_CHANNELS)
 tet_res, clu = data.get_tetrode_spike_times("mp79_17/mP79_17.clu.", "mp79_17/mP79_17.res.", TETRODE_ID, POS_SAMPLING_RATE, RES_SAMPLING_RATE)
 res = data.get_cell_spike_times(clu, tet_res, CELL_ID)
 x_values, y_values, _, _ = data.import_position_data(eeg_data, X_CHANNEL, Y_CHANNEL, ARENA_DIAMETER)
+# DEBUG
+print(tet_res[-1])
+print(res[-1])
 
 # --- Run Analysis Pipeline ---
 # 1. Create the base grid
