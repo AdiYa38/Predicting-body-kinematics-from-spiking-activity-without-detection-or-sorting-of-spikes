@@ -81,7 +81,7 @@ def get_tetrode_spike_times(clu_file_name, res_file_name, tetrode_id, pos_sample
     return (spike_times*pos_sample_rate/res_sample_rate), (clu_labels*pos_sample_rate/res_sample_rate)
 
 
-def get_cell_spike_times(clu_labels, spike_times, cell_id, pos_sample_rate, res_sample_rate):
+def get_cell_spike_times(clu_labels, spike_times, cell_id):
     """
     Extracts spike times for a specific cell ID from the spike times and cluster labels.
     
@@ -94,4 +94,4 @@ def get_cell_spike_times(clu_labels, spike_times, cell_id, pos_sample_rate, res_
     - cell_spike_times: numpy array, spike times for the specified cell ID.
     """
     mask = clu_labels == cell_id
-    return (spike_times[mask]*pos_sample_rate/res_sample_rate) if np.any(mask) else np.array([])  # return empty array if no spikes found 
+    return spike_times[mask] if np.any(mask) else np.array([])  # return empty array if no spikes found 
