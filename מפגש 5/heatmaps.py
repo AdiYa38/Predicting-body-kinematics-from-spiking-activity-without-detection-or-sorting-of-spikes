@@ -164,6 +164,6 @@ def smooth(data_matrix, kernel):
 
 def remove_vacants(mat, vacants):
     res_mat = mat
-    mat[vacants] = 0
+    mat[vacants == 1] = 0
     
     return mat
