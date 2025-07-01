@@ -1,32 +1,16 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import heatmaps
+import data
 
 # --- Simulation Parameters ---
-ARENA_DIAMETER = 10.0
-BIN_SIZE = 1.0
-SAMPLING_RATE = 100
-DURATION = 60
-NUM_SAMPLES = int(DURATION * SAMPLING_RATE)
-NUM_SPIKES = 250
-KERNEL_SIZE = 5
+ARENA_DIAMETER = 80
+BIN_SIZE = 0.5
+SAMPLING_RATE = 1250
 
-# --- Generate Synthetic Data (without path calculation) ---
-# Generate points clustered around the center using a multivariate normal distribution
-# and filter to keep only those inside the circular arena.
-radius = heatmaps.arena_curr_diam / 2
-mean = [0, 0]
-cov = [[(radius/2)**2, 0], [0, (radius/2)**2]] # Covariance for spread
-points = np.random.multivariate_normal(mean, cov, NUM_SAMPLES)
-dist_from_center = np.sqrt(points[:, 0]**2 + points[:, 1]**2)
-in_arena_mask = dist_from_center < radius
-x_values = points[in_arena_mask, 0]
-y_values = points[in_arena_mask, 1]
-num_valid_samples = len(x_values)
+# Load Data
+res = []
 
-# Select random spike times from the valid samples
-res = np.random.choice(num_valid_samples, NUM_SPIKES, replace=False)
-res.sort()
 
 # --- Run Analysis Pipeline ---
 # 1. Create the base grid
