@@ -8,7 +8,7 @@ ARENA_DIAMETER = 100
 BIN_SIZE = 0.5
 RES_SAMPLING_RATE = 20000
 POS_SAMPLING_RATE = 1250
-X_CHANNEL = 125
+X_CHANNEL = 124
 Y_CHANNEL = 125
 N_CHANNELS = 136
 CELL_ID = 7
@@ -32,7 +32,7 @@ bins_grid = heatmaps.create_bins()
 
 # 2. Calculate spike and time maps
 spike_map_raw, _ = heatmaps.bins_spikes_count(bins_grid, res, x_values, y_values, BIN_SIZE, ARENA_DIAMETER)
-time_map_raw = heatmaps.calculate_time_in_bin(bins_grid, x_values, y_values, POS_SAMPLING_RATE, BIN_SIZE, ARENA_DIAMETER)
+time_map_raw = heatmaps.calculate_time_in_bin(bins_grid, x_values, y_values, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
 
 # 3. Create smoothing kernel
 gaussian_kernel = heatmaps.create_gaussian_kernel(size=KERNEL_SIZE)
@@ -72,3 +72,4 @@ plt.show()
 fig_kernel, ax_kernel = plt.subplots(figsize=(5, 5))
 plot_map(ax_kernel, gaussian_kernel, "Gaussian Kernel", cmap='viridis')
 plt.show()
+
