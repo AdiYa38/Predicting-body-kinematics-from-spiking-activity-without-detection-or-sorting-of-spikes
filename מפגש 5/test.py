@@ -44,7 +44,7 @@ time_map_smoothed = heatmaps.convolve(time_map_raw, gaussian_kernel)
 # ===================================================================
 # Visualization
 # ===================================================================
-fig, axes = plt.subplots(2, 2, figsize=(12, 11))
+fig, axes = plt.subplots(2, 2, figsize=(8, 8))
 fig.suptitle("Spatial Analysis Results", fontsize=20)
 
 # Helper function for plotting
