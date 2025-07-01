@@ -2,10 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 import heatmaps
 import data
-
+import prediction
 # --- Simulation Parameters ---
 ARENA_DIAMETER = 100
-BIN_SIZE = 2
+BIN_SIZE = 10
 RES_SAMPLING_RATE = 20000
 POS_SAMPLING_RATE = 1250
 X_CHANNEL = 124
@@ -16,6 +16,8 @@ TETRODE_ID = 1
 KERNEL_SIZE = 7
 EEG_FILE = "mp79_17/mP79_17.eeg"
 DTYPE = np.int16
+
+
 
 # Load Data
 eeg_data = data.get_eeg_data(EEG_FILE, DTYPE, N_CHANNELS)
@@ -45,7 +47,7 @@ final_rates_map = heatmaps.remove_vacants(rates_map, vacants)
 # ===================================================================
 # Visualization
 # ===================================================================
-fig, axes = plt.subplots(2, 2, figsize=(8, 8))
+fig, axes = plt.subplots(2, 2, figsize=(14, 12))
 fig.suptitle("Spatial Analysis Results", fontsize=20)
 
 # Helper function for plotting
@@ -66,7 +68,8 @@ plot_map(axes[0, 1], time_map_raw, "Raw Time Map")
 plot_map(axes[1, 0], spike_map_smoothed, "Smoothed Spike Map")
 plot_map(axes[1, 1], time_map_smoothed, "Smoothed Time Map")#
 
-plt.tight_layout(rect=[0, 0, 1, 0.96])
+plt.tight_layout(rect=[0, 0, 1, 0.94])
+plt.subplots_adjust(hspace=0.3, wspace=0.3)
 plt.show()
 
 # Optional: Plot the kernel separately
@@ -80,4 +83,55 @@ plot_map(rts_ax, final_rates_map, "Smoothed Rates", cmap='viridis')
 plt.show()
 
 
+#=== test predictions ===
+# i ran it on bin_size =20
+ 
+# Set test window parameters
+test_start_time = 1000  # in seconds
+test_duration = 5.0    # window duration in seconds
 
+# 1. Compute λ (spikes/sec) and prior
+lambda_map = prediction.lambda_rate_per_bin(spike_map_smoothed, time_map_smoothed)
+prior_map = prediction.bins_prior(time_map_smoothed)
+
+# 2. Predict bin using PBR and MAP estimator
+log_poiss = prediction.PBR(res, test_start_time, test_duration, lambda_map)
+predicted_bin = prediction.MAP_estimator(log_poiss, prior_map)
+
+# 3. Get the actual bin
+actual_bin = prediction.get_actual_bin(x_values, y_values, test_start_time, test_duration, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
+
+# 4. Print and compare results
+print(f"\nPrediction Results (Window: {test_start_time}s to {test_start_time + test_duration}s)")
+print(f"Predicted Bin (MAP): {predicted_bin}")
+print(f"Actual Bin (from avg position): {actual_bin}")
+
+if predicted_bin == actual_bin:
+    print("✅ Prediction matched the actual bin.")
+elif predicted_bin is None or actual_bin is None:
+    print("⚠️ One of the bins is undefined (outside arena or invalid).")
+else:
+    print("❌ Prediction did NOT match the actual bin.")
+
+
+#=== test prediction success ===
+start_times = [500, 1000, 1586, 1957, 2030,3000,3542,4470, 5042,6080,6943, 7050, 8021, 9010]   
+test_duration = 5.0
+
+lambda_map = prediction.lambda_rate_per_bin(spike_map_smoothed, time_map_smoothed)
+prior_map = prediction.bins_prior(time_map_smoothed)
+
+prediction_bins = []
+actual_bins = []
+
+for start in start_times:
+
+  log_poiss = prediction.PBR(res, start, test_duration, lambda_map)
+  predicted_bin = prediction.MAP_estimator(log_poiss, prior_map)
+  prediction_bins.append(predicted_bin)
+  
+  actual_bin = prediction.get_actual_bin(x_values, y_values, start, test_duration, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
+  actual_bins.append(actual_bin)
+
+accuracy = prediction.prediction_quality(prediction_bins, actual_bins)
+print(f"\nPrediction Accuracy: {accuracy:.2f}% over {len(start_times)} windows")
