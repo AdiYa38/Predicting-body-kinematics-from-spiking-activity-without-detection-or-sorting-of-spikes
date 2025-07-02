@@ -37,12 +37,8 @@ time_map_raw = heatmaps.calculate_time_in_bin(bins_grid, x_values, y_values, BIN
 gaussian_kernel = heatmaps.create_gaussian_kernel(size=KERNEL_SIZE)
 
 # 4. Perform smoothing
-spike_map_smoothed = heatmaps.convolve(spike_map_raw, gaussian_kernel)
-time_map_smoothed = heatmaps.convolve(time_map_raw, gaussian_kernel)
-
-# Final rates map
-rates_map = spike_map_smoothed / time_map_smoothed
-final_rates_map = heatmaps.remove_vacants(rates_map, vacants)
+spike_map_smoothed = heatmaps.smooth(spike_map_raw, gaussian_kernel)
+time_map_smoothed = heatmaps.smooth(time_map_raw, gaussian_kernel)
 
 # ===================================================================
 # Visualization
@@ -73,15 +69,9 @@ plt.subplots_adjust(hspace=0.3, wspace=0.3)
 plt.show()
 
 # Optional: Plot the kernel separately
-fig_kernel, ax_kernel = plt.subplots(figsize=(5, 5))
-plot_map(ax_kernel, gaussian_kernel, "Gaussian Kernel", cmap='viridis')
+#fig_kernel, ax_kernel = plt.subplots(figsize=(5, 5))
+#plot_map(ax_kernel, gaussian_kernel, "Gaussian Kernel", cmap='viridis')
 #plt.show()
-
-# Plot final retes map
-fig_rts, rts_ax = plt.subplots(figsize=(5, 5))
-plot_map(rts_ax, final_rates_map, "Smoothed Rates", cmap='viridis')
-plt.show()
-
 
 #=== test predictions ===
 # i ran it on bin_size =20
@@ -91,8 +81,19 @@ test_start_time = 1000  # in seconds
 test_duration = 5.0    # window duration in seconds
 
 # 1. Compute λ (spikes/sec) and prior
-lambda_map = prediction.lambda_rate_per_bin(spike_map_smoothed, time_map_smoothed)
+lambda_map = prediction.lambda_rate_per_bin(spike_map_smoothed, time_map_smoothed, vacants)
 prior_map = prediction.bins_prior(time_map_smoothed)
+
+# Plot final rates maps
+fig, axes = plt.subplots(1, 2, figsize=(12, 6))
+fig.suptitle("Probability calculations", fontsize=20)
+plot_map(axes[0], lambda_map, "Spike rates")
+plot_map(axes[1], prior_map, "Prior")
+plt.tight_layout()
+plt.subplots_adjust(hspace=0.3, wspace=0.3)
+plt.show()
+
+print("#############!!!!!!!!!!!!!!!!!!!@@@@@@@@@@@@@@@@")
 
 # 2. Predict bin using PBR and MAP estimator
 log_poiss = prediction.PBR(res, test_start_time, test_duration, lambda_map)
@@ -118,7 +119,7 @@ else:
 start_times = [500, 1000, 1586, 1957, 2030,3000,3542,4470, 5042,6080,6943, 7050, 8021, 9010]   
 test_duration = 5.0
 
-lambda_map = prediction.lambda_rate_per_bin(spike_map_smoothed, time_map_smoothed)
+lambda_map = prediction.lambda_rate_per_bin(spike_map_smoothed, time_map_smoothed, vacants)
 prior_map = prediction.bins_prior(time_map_smoothed)
 
 prediction_bins = []
