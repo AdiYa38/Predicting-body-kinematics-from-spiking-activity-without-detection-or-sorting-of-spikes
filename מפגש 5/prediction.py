@@ -1,8 +1,5 @@
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.signal import resample_poly
-import importlib.resources
-from scipy.ndimage import gaussian_filter
+import heatmaps
 
 def spike_rate_in_bin(bin_spike_count, time_in_bin):
     '''
@@ -27,7 +24,7 @@ def bins_prior(time_in_bin):
     return (time_in_bin/T_tot)
 
 
-def lambda_rate_per_bin(spike_map, time_map):
+def lambda_rate_per_bin(spike_map, time_map, vacants):
     '''
         calculates the lambda of poisson probability in each bin
         Args:
@@ -40,6 +37,7 @@ def lambda_rate_per_bin(spike_map, time_map):
     lambda_map = np.full(spike_map.shape, -1.0)
     valid_mask = (spike_map != -1) & (time_map != 0)
     lambda_map[valid_mask] = spike_map[valid_mask] / time_map[valid_mask]
+    lambda_map = heatmaps.remove_vacants(lambda_map, vacants)
 
     return lambda_map
 
