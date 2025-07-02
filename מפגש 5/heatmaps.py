@@ -1,13 +1,14 @@
 import numpy as np
+
 from scipy.ndimage import convolve
  
 temp_bin_size_cm =10
 arena_curr_diam = 100
 
-def create_bins(bin_size_cm = temp_bin_size_cm, arena_diameter_cm = arena_curr_diam):
+OUTSIDE_FLAG = -1
+INSIDE_FLAG = 0
 
-    OUTSIDE_FLAG = -1
-    INSIDE_FLAG = 0
+def create_bins(bin_size_cm = temp_bin_size_cm, arena_diameter_cm = arena_curr_diam):
     
     num_bins_per_axis = int(np.ceil(arena_diameter_cm / bin_size_cm))
     bins = np.full((num_bins_per_axis, num_bins_per_axis), fill_value=INSIDE_FLAG, dtype=np.int32)
@@ -159,8 +160,20 @@ def create_gaussian_kernel(size=7, sigma_cutoff=2.57):
     return kernel / np.sum(kernel)
 
 def smooth(data_matrix, kernel):
+
+    # Remove outside flag
+    out_mat = np.zeros_like(data_matrix)
+    out_mat[data_matrix == OUTSIDE_FLAG] = -OUTSIDE_FLAG
+    clean_mat = np.copy(data_matrix)
+    clean_mat += out_mat # all -1 values becomes 0
+
+    # Convolve
+    conv_res = convolve(clean_mat, kernel, mode='mirror')
+
+    # Replace outside values with flag
+    conv_res[out_mat == 1] = OUTSIDE_FLAG
     
-    return convolve(data_matrix, kernel, mode='mirror')
+    return conv_res
 
 def remove_vacants(mat, vacants):
     res_mat = mat
