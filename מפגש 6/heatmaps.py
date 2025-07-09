@@ -164,7 +164,6 @@ def create_reflection_padded_matrix(data_matrix, bins_grid, kernel_size):
 
     # Initial padded matrix
     padded_matrix = np.copy(data_matrix).astype(float)
-    padded_matrix[bins_grid == -1] = 0
     
     rows, cols = data_matrix.shape
     pad_dist = kernel_size // 2
