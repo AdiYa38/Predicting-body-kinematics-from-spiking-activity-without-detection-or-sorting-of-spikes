@@ -102,7 +102,7 @@ plt.tight_layout()
 plt.show()
 
 # === plot preditions vs bin size 
-bin_sizes = [2, 4, 8,15, 25, 33,42, 50]
+bin_sizes = [1,2, 4, 8,15, 25, 33,42, 50]
 accuracies = []
 for bin_size in bin_sizes:
     prediction_bins = []
@@ -131,4 +131,5 @@ plt.show()
 
 
   
+
 
