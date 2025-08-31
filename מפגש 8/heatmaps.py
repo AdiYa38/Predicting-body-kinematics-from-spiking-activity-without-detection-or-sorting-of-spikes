@@ -322,10 +322,9 @@ def cover_vacants(bins_grid, map, vacants):
                     map_copy[i, j] = 0
     
     return map_copy
-def rates_map(bin_size, cell_id, shank, eeg_data, tet_res, clu, 
-              KERNEL_SIZE = 7, ARENA_DIAMETER = 100, X_CHANNEL = 124, Y_CHANNEL = 125):
+def rates_map(bin_size, cell_id, x_values, y_values, tet_res, clu, 
+              KERNEL_SIZE = 7, ARENA_DIAMETER = 100, POS_SAMPLING_RATE = 1250):
     res = data.get_cell_spike_times(clu, tet_res, cell_id)
-    x_values, y_values, x_in, y_in = data.import_position_data(eeg_data, X_CHANNEL, Y_CHANNEL, ARENA_DIAMETER)
 
     # 1. Create the base grid
     bins_grid = create_bins(bin_size, ARENA_DIAMETER)
