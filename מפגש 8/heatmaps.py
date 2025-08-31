@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.ndimage import convolve, distance_transform_edt
- 
+import data
+
 temp_bin_size_cm =10
 arena_curr_diam = 100
 
@@ -321,3 +322,32 @@ def cover_vacants(bins_grid, map, vacants):
                     map_copy[i, j] = 0
     
     return map_copy
+def rates_map(bin_size, cell_id, shank, eeg_data, tet_res, clu, 
+              KERNEL_SIZE = 7, ARENA_DIAMETER = 100, X_CHANNEL = 124, Y_CHANNEL = 125):
+    res = data.get_cell_spike_times(clu, tet_res, cell_id)
+    x_values, y_values, x_in, y_in = data.import_position_data(eeg_data, X_CHANNEL, Y_CHANNEL, ARENA_DIAMETER)
+
+    # 1. Create the base grid
+    bins_grid = create_bins(bin_size, ARENA_DIAMETER)
+
+    # 2. Calculate spike and time maps
+    spike_map_raw, vacants = bins_spikes_count(bins_grid, res, x_values, y_values, bin_size, ARENA_DIAMETER)
+    time_map_raw = calculate_time_in_bin(bins_grid, x_values, y_values, bin_size, ARENA_DIAMETER, POS_SAMPLING_RATE)
+
+    # 3. Create smoothing kernel
+    gaussian_kernel = create_gaussian_kernel(size=KERNEL_SIZE)
+
+    # 4. Cover vacants
+    spike_map_covered = cover_vacants(bins_grid, spike_map_raw, vacants)
+    time_map_covered = cover_vacants(bins_grid,time_map_raw, vacants)
+
+    # 5. Perform smoothing
+    spike_map_smoothed = smooth(spike_map_covered, gaussian_kernel, bins_grid)
+    time_map_smoothed = smooth(time_map_covered, gaussian_kernel, bins_grid)
+
+    # Final rates map
+    rates_map = spike_map_smoothed / time_map_smoothed
+    final_rates_map = remove_background(remove_vacants(rates_map, vacants))
+
+    return final_rates_map
+
