@@ -155,40 +155,9 @@ def prediction_quality(prediction_bins, actual_bins):
 
     return (correct / total) * 100 if total > 0 else 0.0
 
-# def compute_average_velocity(x_cm, y_cm, pos_sample_rate = 1250):
-#     '''
-#         calculates the mouce's average speed
-#         Args:
-#             x_cm(array): predicted bin 
-#             y_cm(array):coresponding actual bin
-#             pos_sample_rate(int): helps track locations times
-    
-#         Returns:
-#            int: the average speed 
-#     '''
-#     dx = np.diff(x_cm)
-#     dy = np.diff(y_cm)
-#     dt = 1.0 / pos_sample_rate
-#     num_large_dx = np.sum(np.abs(dx) > 1)
-#     num_large_dy = np.sum(np.abs(dy) > 1)
 
-#     print(f"dx > 1: {num_large_dx} times")
-#     print(f"dy > 1: {num_large_dy} times")
-#     vx = dx / dt
-#     vy = dy / dt
-#     speed = np.sqrt(vx**2 + vy**2)
 
-#     plt.hist(speed, bins=1, color='skyblue')
-#     plt.xlabel("Speed (cm/s)")
-#     plt.ylabel("Count")
-#     plt.title("Speed distribution")
-#     plt.grid(True)
-#     plt.show()
-
-   
-#     return np.median(speed) 
-
-def MB_MAP_estimator(log_poiss_prob, bins_prior ):
+def MB_MAP_estimator(log_poiss_prob, bins_prior):
     '''
         calculates the most likely bin to be in based on the the given spike rate
         Args:
@@ -201,7 +170,7 @@ def MB_MAP_estimator(log_poiss_prob, bins_prior ):
      # Mask out bins with zero prior (we've never been there)
     with np.errstate(divide='ignore'):
         log_prior = np.log(bins_prior)
-    log_sum = np.sum(log_poiss_prob, axis=0)
+    log_sum = np.nansum(log_poiss_prob, axis=0)
     log_posterior = log_sum + log_prior
 
     max_idx = np.unravel_index(np.argmax(log_posterior), log_posterior.shape)
@@ -235,6 +204,37 @@ def MB_PBR(cell_spike_times, start_time, duration, lambda_map,pos_sample_rate=12
 
         #log_poiss_prob = np.full(lambda_map[0].shape, -np.inf)
        # valid_mask = lambda_map >= 0
+        this_lambda_map = lambda_map[i] if isinstance(lambda_map, list) else lambda_map
+
+        
+        log_poiss_prob.append( spike_rate * np.log(this_lambda_map) - this_lambda_map)
+
+    return log_poiss_prob
+
+
+def MUA_PBR(mua_signals, start_time, duration, lambda_map,pos_sample_rate=1250):
+    '''
+        calculates the poisson probability to get a specific spike rate on each bin
+        Args:
+            mua_signals(list of arrays): MUA signals for each channel
+            start_time(float): start time in seconds of the section we want to evaluate in seconds
+            duration(int): for how long we want to calculate in seconds
+            lambda_map(matrix): spikes/time of each bin
+            pos_sample_rate(int): helps translate spikes to seconds
+        Returns:
+            matrix: the log of the probability that the measured spike rate was measured in each bin,  with -inf where invalid 
+    '''
+    start_sample = int(start_time * pos_sample_rate)
+    end_sample = int((start_time + duration) * pos_sample_rate)
+
+    log_poiss_prob = [] 
+
+    for i, res in enumerate(mua_signals):
+        # Keep only spikes within that sample range
+        window_spikes = res[start_sample:end_sample]
+
+        spike_rate = np.sum(window_spikes)/duration
+
         this_lambda_map = lambda_map[i] if isinstance(lambda_map, list) else lambda_map
 
         

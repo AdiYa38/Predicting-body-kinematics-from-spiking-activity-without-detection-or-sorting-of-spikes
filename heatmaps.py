@@ -241,6 +241,6 @@ def smooth(data_matrix, kernel, bins_grid):
 
 def remove_vacants(mat, vacants):
     res_mat = mat
-    res_mat[vacants == 1] = 0
+    res_mat[vacants == 1] = None
     
-    return mat
+    return res_mat

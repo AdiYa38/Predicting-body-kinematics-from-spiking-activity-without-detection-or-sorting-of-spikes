@@ -11,8 +11,8 @@ POS_SAMPLING_RATE = 1250
 X_CHANNEL = 124
 Y_CHANNEL = 125
 N_CHANNELS = 136
-CELL_ID = 7
-TETRODE_ID = 1
+CELL_ID = 5
+TETRODE_ID = 7
 KERNEL_SIZE =7 
 EEG_FILE = "mp79_17/mP79_17.eeg"
 DTYPE = np.int16
@@ -22,7 +22,7 @@ DTYPE = np.int16
 # Load Data
 eeg_data = data.get_eeg_data(EEG_FILE, DTYPE, N_CHANNELS)
 tet_res, clu = data.get_tetrode_spike_times("mp79_17/mP79_17.clu.", "mp79_17/mP79_17.res.", TETRODE_ID, POS_SAMPLING_RATE, RES_SAMPLING_RATE)
-res = data.get_cell_spike_times(clu, tet_res, CELL_ID)
+
 x_values, y_values, x_in, y_in = data.import_position_data(eeg_data, X_CHANNEL, Y_CHANNEL, ARENA_DIAMETER)
 
 # #plot x,y 
@@ -43,6 +43,8 @@ x_values, y_values, x_in, y_in = data.import_position_data(eeg_data, X_CHANNEL, 
 
 # --- Run Analysis Pipeline ---
 # 1. Create the base grid
+
+res = data.get_cell_spike_times(clu, tet_res, CELL_ID)
 bins_grid = heatmaps.create_bins(BIN_SIZE,ARENA_DIAMETER)
 
 # 2. Calculate spike and time maps
@@ -74,8 +76,8 @@ def plot_map(ax, data, title, cmap='jet'):
     
     im = ax.imshow(data_to_plot, cmap=cmap, origin='lower', interpolation='nearest')
     ax.set_title(title, fontsize=14)
-    ax.set_xlabel("Bin X")
-    ax.set_ylabel("Bin Y")
+    ax.set_xlabel("X[cm]")
+    ax.set_ylabel("Y[cm]")
     fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
 # Plot the four main results
@@ -96,7 +98,7 @@ plt.subplots_adjust(hspace=0.3, wspace=0.3)
 # Plot final retes map
 fig_rts, rts_ax = plt.subplots(figsize=(5, 5))
 plot_title = f"Final Rates Map (Cell {TETRODE_ID}.{CELL_ID})"
-plot_map(rts_ax, final_rates_map,plot_title, cmap='viridis')
+plot_map(rts_ax, final_rates_map,plot_title, cmap='jet')
 plt.show()
 
 
@@ -105,7 +107,7 @@ plt.show()
  
 # Set test window parameters
 test_start_time = 1000  # in seconds
-test_duration = 1.0    # window duration in seconds
+test_duration = 6.0    # window duration in seconds
 
 # 1. Compute λ (spikes/sec) and prior
 #lambda_map = prediction.lambda_rate_per_bin(spike_map_smoothed, time_map_smoothed)
@@ -132,7 +134,15 @@ else:
 
 
 #=== test prediction success ===
-start_times = [500, 1000, 1586, 1957, 2030,3000,3542,4470, 5042,6080,6943,6998, 7050,7452, 7685, 7899, 8021, 9010]   
+# Recording parameters
+recording_duration_sec = 10800  # 3 hours
+min_start = 1800   # after 30 min
+max_start = 9000   # before last 30 min
+n_windows = 1000
+
+# Generate random start times (in seconds)
+np.random.seed(42)  # for reproducibility
+start_times = np.random.randint(min_start, max_start, size=n_windows)
 test_duration = 5.0
 
 #lambda_map = prediction.lambda_rate_per_bin(spike_map_smoothed, time_map_smoothed)
