@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.ndimage import convolve, distance_transform_edt
- 
+import data
+
 temp_bin_size_cm =10
 arena_curr_diam = 100
 
@@ -73,11 +74,11 @@ def bins_spikes_count(bins, res, x_values, y_values, bin_len, arena_diameter):
     
     # Initial matrixes
     bins_spikes_count =  np.copy(bins)
-    vacants = np.copy(bins)
-    vacants[vacants == -1] = 1
+    #vacants = np.ones_like(bins)
+    #vacants[vacants == -1] = 1
 
     if len(res) == 0:
-        return bins_spikes_count, vacants
+        return bins_spikes_count #, vacants
 
     # Calculate spikes bins
     spike_x = x_values[res]
@@ -92,7 +93,7 @@ def bins_spikes_count(bins, res, x_values, y_values, bin_len, arena_diameter):
 
     # All spikes are outside of the arena
     if valid_indices.shape[0] == 0:
-        return bins_spikes_count, vacants
+        return bins_spikes_count #, vacants
 
     # Count into bins
     rows = valid_indices[:, 0]
@@ -101,13 +102,13 @@ def bins_spikes_count(bins, res, x_values, y_values, bin_len, arena_diameter):
     np.add.at(bins_spikes_count, (rows, cols), 1)
 
     # Create the vacants matrix
-    unique_valid_indices = np.unique(valid_indices, axis=0)
-    unique_rows = unique_valid_indices[:, 0]
-    unique_cols = unique_valid_indices[:, 1]
+    #unique_valid_indices = np.unique(valid_indices, axis=0)
+    #unique_rows = unique_valid_indices[:, 0]
+    #unique_cols = unique_valid_indices[:, 1]
 
-    vacants[unique_rows, unique_cols] = 0
+    #vacants[unique_rows, unique_cols] = 0
 
-    return bins_spikes_count, vacants
+    return bins_spikes_count #, vacants
 
 def calculate_time_in_bin(bins, x_values, y_values, bin_size_cm, arena_diameter_cm, sampling_rate=1250):
 
@@ -140,8 +141,12 @@ def calculate_time_in_bin(bins, x_values, y_values, bin_size_cm, arena_diameter_
     # Results in s
     time_values = counts * time_per_sample
     time_in_bin[rows, cols] = time_values
-    
-    return time_in_bin
+
+    # Create vacants matrix
+    vacants = np.copy(bins)
+    vacants[time_in_bin == 0] = 1
+
+    return time_in_bin, vacants
 
 def create_gaussian_kernel(size=7, sigma_cutoff=2.57):
 
@@ -239,8 +244,114 @@ def smooth(data_matrix, kernel, bins_grid):
     return smoothed_map
 
 
-def remove_vacants(mat, vacants):
-    res_mat = mat
-    res_mat[vacants == 1] = None
+def remove_vacants(mat, vacants, for_graphing = False):
+    res_mat = mat.astype(float)
+    
+    if (for_graphing):
+        res_mat[vacants == 1] = np.nan
+    else:    
+        res_mat[vacants == 1] = -1
     
     return res_mat
+
+def remove_background (map, bins_grid):
+    res_mat = np.copy(map.astype(float))
+    res_mat[bins_grid == -1] = np.nan
+
+    return res_mat
+
+
+def cover_vacants(bins_grid, map, vacants):
+    """
+    Fills vacant bins by averaging their neighbors.
+
+    If the immediate 3x3 neighborhood is empty (all zeros), it expands the search
+    to the outer ring of a 7x7 neighborhood (i.e., the 7x7 area excluding the inner 5x5 area).
+    """
+    # Create a copy to work on, to avoid modifying the original map during iteration
+    map_copy = np.copy(map).astype(float)
+    rows, cols = vacants.shape
+
+    # Iterate through each cell of the map
+    for i in range(rows):
+        for j in range(cols):
+            # Check if the current cell is a vacant one inside the arena
+            if vacants[i, j] == 1 and bins_grid[i, j] == 0:
+                
+                # --- Step 1: Check the immediate 3x3 neighborhood ---
+                row_start_3x3 = max(0, i - 1)
+                row_end_3x3 = min(rows, i + 2)
+                col_start_3x3 = max(0, j - 1)
+                col_end_3x3 = min(cols, j + 2)
+                
+                neighborhood_3x3 = map[row_start_3x3:row_end_3x3, col_start_3x3:col_end_3x3]
+                positive_neighbors_3x3 = neighborhood_3x3[neighborhood_3x3 > 0]
+                
+                if positive_neighbors_3x3.size > 0:
+                    # If neighbors are found in the 3x3 area, use their average and move to the next vacant cell
+                    map_copy[i, j] = np.mean(positive_neighbors_3x3)
+                    continue # This skips the rest of the code for this cell
+                
+                # --- Step 2: If 3x3 is empty, check the 7x7 outer ring ---
+                
+                # Create a boolean mask for the entire map, initially all False
+                ring_mask = np.zeros_like(map, dtype=bool)
+                
+                # Define the 7x7 outer area and set it to True
+                row_start_7x7 = max(0, i - 3)
+                row_end_7x7 = min(rows, i + 4)
+                col_start_7x7 = max(0, j - 3)
+                col_end_7x7 = min(cols, j + 4)
+                ring_mask[row_start_7x7:row_end_7x7, col_start_7x7:col_end_7x7] = True
+                
+                # Define the 5x5 inner area and set it back to False, leaving only the "ring" as True
+                row_start_5x5 = max(0, i - 2)
+                row_end_5x5 = min(rows, i + 3)
+                col_start_5x5 = max(0, j - 2)
+                col_end_5x5 = min(cols, j + 3)
+                ring_mask[row_start_5x5:row_end_5x5, col_start_5x5:col_end_5x5] = False
+                
+                # Get all values from the ring using the mask
+                ring_values = map[ring_mask]
+                
+                # Filter for positive values within the ring
+                positive_ring_values = ring_values[ring_values > 0]
+                
+                if positive_ring_values.size > 0:
+                    # If positive values are found in the ring, use their average
+                    map_copy[i, j] = np.mean(positive_ring_values)
+                else:
+                    # If the ring is also empty of positive values, set the cell to 0
+                    map_copy[i, j] = 0
+    
+    return map_copy
+
+
+def rates_map(bin_size, cell_id, x_values, y_values, tet_res, clu, 
+              KERNEL_SIZE = 7, ARENA_DIAMETER = 100, POS_SAMPLING_RATE = 1250):
+    res = data.get_cell_spike_times(clu, tet_res, cell_id)
+
+    # 1. Create the base grid
+    bins_grid = create_bins(bin_size, ARENA_DIAMETER)
+
+    # 2. Calculate spike and time maps
+    spike_map_raw = bins_spikes_count(bins_grid, res, x_values, y_values, bin_size, ARENA_DIAMETER)
+    time_map_raw, vacants = calculate_time_in_bin(bins_grid, x_values, y_values, bin_size, ARENA_DIAMETER, POS_SAMPLING_RATE)
+
+    # 3. Create smoothing kernel
+    gaussian_kernel = create_gaussian_kernel(size=KERNEL_SIZE)
+
+    # 4. Cover vacants
+    spike_map_covered = cover_vacants(bins_grid, spike_map_raw, vacants)
+    time_map_covered = cover_vacants(bins_grid,time_map_raw, vacants)
+
+    # 5. Perform smoothing
+    spike_map_smoothed = smooth(spike_map_covered, gaussian_kernel, bins_grid)
+    time_map_smoothed = smooth(time_map_covered, gaussian_kernel, bins_grid)
+
+    # Final rates map
+    rates_map = spike_map_smoothed / time_map_smoothed
+    final_rates_map = remove_background(remove_vacants(rates_map, vacants, True), bins_grid)
+
+    return final_rates_map
+
