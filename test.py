@@ -11,8 +11,8 @@ POS_SAMPLING_RATE = 1250
 X_CHANNEL = 124
 Y_CHANNEL = 125
 N_CHANNELS = 136
-CELL_ID = 5
-TETRODE_ID = 7
+CELL_ID = 7
+TETRODE_ID = 1
 KERNEL_SIZE =7 
 EEG_FILE = "mp79_17/mP79_17.eeg"
 DTYPE = np.int16
@@ -48,8 +48,8 @@ res = data.get_cell_spike_times(clu, tet_res, CELL_ID)
 bins_grid = heatmaps.create_bins(BIN_SIZE,ARENA_DIAMETER)
 
 # 2. Calculate spike and time maps
-spike_map_raw, vacants = heatmaps.bins_spikes_count(bins_grid, res, x_values, y_values, BIN_SIZE, ARENA_DIAMETER)
-time_map_raw = heatmaps.calculate_time_in_bin(bins_grid, x_values, y_values, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
+spike_map_raw = heatmaps.bins_spikes_count(bins_grid, res, x_values, y_values, BIN_SIZE, ARENA_DIAMETER)
+time_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid, x_values, y_values, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
 
 # 3. Create smoothing kernel
 gaussian_kernel = heatmaps.create_gaussian_kernel(size=KERNEL_SIZE)
@@ -60,13 +60,14 @@ time_map_smoothed = heatmaps.smooth(time_map_raw, gaussian_kernel, bins_grid)
 
 # Final rates map
 rates_map = spike_map_smoothed / time_map_smoothed
-final_rates_map = heatmaps.remove_vacants(rates_map, vacants)
+final_rates_map = heatmaps.remove_vacants(rates_map, vacants, True)
+final_rates_map = heatmaps.remove_background(final_rates_map, bins_grid)
 
 # ===================================================================
 # Visualization
 # ===================================================================
 fig, axes = plt.subplots(2, 2, figsize=(14, 12))
-fig.suptitle("Spatial Analysis Results", fontsize=20)
+fig.suptitle(f"Spatial Analysis Results for Cell {TETRODE_ID}.{CELL_ID} ", fontsize=20)
 
 # Helper function for plotting
 def plot_map(ax, data, title, cmap='jet'):

@@ -354,4 +354,3 @@ def rates_map(bin_size, cell_id, x_values, y_values, tet_res, clu,
     final_rates_map = remove_background(remove_vacants(rates_map, vacants, True), bins_grid)
 
     return final_rates_map
-

@@ -11,8 +11,8 @@ POS_SAMPLING_RATE = 1250
 X_CHANNEL = 124
 Y_CHANNEL = 125
 N_CHANNELS = 136
-CELL_ID =  np.array([7,11,11, 4])#, 1, 2, 3, 4,1,2,3,4,1,2,3,4,1,2,3,4])
-TETRODE_ID = np.array([1,8,2, 3])#, 1, 1, 1, 1,2,2,2,2,3,3,3,3,4,4,4,4])
+CELL_ID =  np.array([7,11,11, 4])#, 1, 2, 3, 4,1,2,3,4,1,2,3,4,1,2,3,4, 5,6,7,8, 6,7,8,5])
+TETRODE_ID = np.array([1,8,2, 3])#, 1, 1, 1, 1,2,2,2,2,3,3,3,3,4,4,4,4, 5,5,5,5, 6,6,6,6])
 KERNEL_SIZE = 7
 EEG_FILE = "mp79_17/mP79_17.eeg"
 DTYPE = np.int16
@@ -40,8 +40,8 @@ x_smooth, y_smooth = data.smooth_location(x_values, y_values)
 
 # 1. Create the base grid
 bins_grid = heatmaps.create_bins(BIN_SIZE,ARENA_DIAMETER)
-time_map_raw = heatmaps.calculate_time_in_bin(bins_grid, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
-time_map_smoothed = heatmaps.smooth(time_map_raw, gaussian_kernel, bins_grid)
+time_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
+#time_map_smoothed = heatmaps.smooth(time_map_raw, gaussian_kernel, bins_grid)
 
 res_list = []
 final_rates_map = []
@@ -56,13 +56,13 @@ for tet, cell in zip(TETRODE_ID, CELL_ID):
     # --- Run Analysis Pipeline ---
 
     # 2. Calculate spike and time maps
-    spike_map_raw, vacants = heatmaps.bins_spikes_count(bins_grid, res, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER)
+    spike_map_raw = heatmaps.bins_spikes_count(bins_grid, res, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER)
     
     # 4. Perform smoothing
     spike_map_smoothed =heatmaps.smooth(spike_map_raw, gaussian_kernel, bins_grid)
 
     # Final rates map
-    rates_map = spike_map_smoothed / time_map_smoothed
+    rates_map = spike_map_raw / time_map_raw
     final_rates_map.append(heatmaps.remove_vacants(rates_map, vacants))
 
 
@@ -76,10 +76,10 @@ n_windows = 1000
 # Generate random start times (in seconds)
 np.random.seed(42)  # for reproducibility
 start_times = np.random.randint(min_start, max_start, size=n_windows)
-test_duration = 6.0
+test_duration = 40.0
 
 #lambda_map = prediction.lambda_rate_per_bin(spike_map_smoothed, time_map_smoothed)
-prior_map = prediction.bins_prior(time_map_smoothed)
+prior_map = prediction.bins_prior(time_map_raw)
 
 prediction_bins = []
 actual_bins = []
@@ -107,6 +107,7 @@ chance_levels = []
 errors = []
 
 for duration in durations:
+    
     prediction_bins = []
     actual_bins = []
 
@@ -166,12 +167,39 @@ plt.show()
 
 # === plot preditions vs bin size 
 # === plot predictions vs bin size 
-bin_sizes = [1, 2, 3, 4, 5, 6, 8, 10, 15,20, 25, 33, 42, 50, 60, 75, 100]
+bin_sizes = [1, 2,  4, 5, 10, 20, 25, 50, 100]
 accuracies = []
 chance_levels = []
 errors = []
 
+
 for bin_size in bin_sizes:
+    bins_grid = heatmaps.create_bins(bin_size,ARENA_DIAMETER)
+    time_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid, x_smooth, y_smooth, bin_size, ARENA_DIAMETER, POS_SAMPLING_RATE)
+    time_map_smoothed = heatmaps.smooth(time_map_raw, gaussian_kernel, bins_grid)
+    prior_map = prediction.bins_prior(time_map_smoothed)
+    res_list = []
+    final_rates_map = []
+
+    for tet, cell in zip(TETRODE_ID, CELL_ID):
+        
+        tet_res, clu = data.get_tetrode_spike_times("mp79_17/mP79_17.clu.", "mp79_17/mP79_17.res.", tet, POS_SAMPLING_RATE, RES_SAMPLING_RATE)
+        res = data.get_cell_spike_times(clu, tet_res, cell)
+        res_list.append(res)
+    
+    
+        # --- Run Analysis Pipeline ---
+
+        # 2. Calculate spike and time maps
+        spike_map_raw = heatmaps.bins_spikes_count(bins_grid, res, x_smooth, y_smooth, bin_size, ARENA_DIAMETER)
+        
+        # 4. Perform smoothing
+        spike_map_smoothed =heatmaps.smooth(spike_map_raw, gaussian_kernel, bins_grid)
+
+        # Final rates map
+        rates_map = spike_map_smoothed / time_map_smoothed
+        final_rates_map.append(heatmaps.remove_vacants(rates_map, vacants))
+
     prediction_bins = []
     actual_bins = []
 

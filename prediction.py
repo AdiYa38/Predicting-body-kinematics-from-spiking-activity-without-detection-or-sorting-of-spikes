@@ -167,9 +167,11 @@ def MB_MAP_estimator(log_poiss_prob, bins_prior):
         Returns:
             (int,int): the most likley bin returns by the map estimator
     '''
-     # Mask out bins with zero prior (we've never been there)
+    # Mask out bins with zero prior (we've never been there) and values of -1
     with np.errstate(divide='ignore'):
-        log_prior = np.log(bins_prior)
+        valid_mask = (bins_prior > 0) & (bins_prior != -1)
+        log_prior = np.full(bins_prior.shape, -np.inf)
+        log_prior[valid_mask] = np.log(bins_prior[valid_mask])
     log_sum = np.nansum(log_poiss_prob, axis=0)
     log_posterior = log_sum + log_prior
 

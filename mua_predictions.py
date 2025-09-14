@@ -15,10 +15,10 @@ Y_CHANNEL = 125
 N_CHANNELS = 136
 DAT_file = "dat/mP79_17.dat"
 EEG_FILE = "mp79_17/mP79_17.eeg"
-CHANNEL = 110
-START_SAMPLE = 2253000
-DURATION = 0.1 # Duration in seconds
-SAMPLE_RATE = 20000  # Original sampling rate of the EEG data
+CHANNEL = 50
+START_SAMPLE = 57*60*RES_SAMPLING_RATE
+
+DURATION = 0.2 # Duration in seconds
 KERNEL_SIZE = 7
 DTYPE = np.int16
 
@@ -30,14 +30,16 @@ dat_data = data.get_eeg_data(DAT_file, np.int16, 136)
 eeg_data = data.get_eeg_data(EEG_FILE, DTYPE, N_CHANNELS)
 
 # Create MUA signal
-mua_signal, og_sig = MUA.create_mua_signal(dat_data, CHANNEL, START_SAMPLE, DURATION, SAMPLE_RATE)
-og_sig = signal.resample_poly(og_sig, 1250, SAMPLE_RATE)
+mua_signal, og_sig = MUA.create_mua_signal(dat_data, CHANNEL, START_SAMPLE, DURATION, RES_SAMPLING_RATE)
+
 
 # --- Plotting the signals in time ---
 # Create a time array for the x-axis
-show_mua = mua_signal[START_SAMPLE:START_SAMPLE + int(DURATION * SAMPLE_RATE)]
-time_axis = np.linspace(0, DURATION, len(show_mua), endpoint=False)
-show_sig = og_sig[START_SAMPLE:START_SAMPLE + int(DURATION * SAMPLE_RATE)]
+show_mua = mua_signal[int(START_SAMPLE/16):int(START_SAMPLE/16) + int(DURATION * POS_SAMPLING_RATE)]
+time_axis_mua = np.linspace(0, DURATION, len(show_mua), endpoint=False)
+show_sig = og_sig[START_SAMPLE:START_SAMPLE + int(DURATION * RES_SAMPLING_RATE)]
+time_axis_og = np.linspace(0, DURATION, len(show_sig), endpoint=False)
+
 y_min = np.min(og_sig)
 y_max = np.max(og_sig)
 
@@ -45,7 +47,7 @@ plt.figure(figsize=(12, 6))
 
 # Plot the original signal with fixed y-axis limits
 plt.subplot(2, 1, 1)
-plt.plot(time_axis, show_sig)
+plt.plot(time_axis_og, show_sig)
 plt.title(f'Original Signal for Channel {CHANNEL}')
 plt.xlabel('Time (s)')
 plt.ylabel('Amplitude[microvolts]')
@@ -54,7 +56,7 @@ plt.grid()
 
 # Plot the MUA signal with the same fixed y-axis limits
 plt.subplot(2, 1, 2)
-plt.plot(time_axis, show_mua, color='orange')
+plt.plot(time_axis_mua, show_mua, color='orange')
 plt.title(f'MUA Signal')
 plt.xlabel('Time (s)')
 plt.ylabel('Amplitude[microvolts]')
@@ -77,11 +79,11 @@ x_smooth, y_smooth = data.smooth_location(x_values, y_values)
 
 
 bins_grid = heatmaps.create_bins(BIN_SIZE,ARENA_DIAMETER)
-time_map_raw = heatmaps.calculate_time_in_bin(bins_grid, x_values, y_values, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
+time_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid, x_values, y_values, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
 
 
 
-spike_map_raw, vacants = MUA.bin_mua_count(bins_grid, mua_signal, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER)
+spike_map_raw = MUA.bin_mua_count(bins_grid, mua_signal, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER)
 
 
 
@@ -91,7 +93,8 @@ time_map_smoothed = heatmaps.smooth(time_map_raw, gaussian_kernel, bins_grid)
 # Final rates map
 rates_map = spike_map_smoothed / time_map_smoothed
 final_rates_map = heatmaps.remove_vacants(rates_map, vacants)
-spike_map_raw[spike_map_raw == 0] = np.nan
+final_rates_map = heatmaps.remove_background(final_rates_map, bins_grid)
+spike_map_raw = heatmaps.remove_background(spike_map_raw, bins_grid)
 
 
 # --- Plotting spike_map_raw as a heatmap ---
@@ -113,7 +116,7 @@ plt.show()
 # Visualization
 # ===================================================================
 fig, axes = plt.subplots(2, 2, figsize=(14, 12))
-fig.suptitle("Spatial Analysis Results", fontsize=20)
+fig.suptitle(f"Spatial Analysis Results of channel {CHANNEL}", fontsize=20)
 
 # Helper function for plotting
 def plot_map(ax, data, title, cmap='jet'):
@@ -159,7 +162,7 @@ POS_SAMPLING_RATE = 1250
 X_CHANNEL = 124
 Y_CHANNEL = 125 
 N_CHANNELS = 136
-CHANNELS =  np.arange(0, 10, 1)
+CHANNELS = np.array([1,50])
 KERNEL_SIZE = 7
 EEG_FILE = "mp79_17/mP79_17.eeg"
 DTYPE = np.int16
@@ -167,7 +170,7 @@ DTYPE = np.int16
 
 # 1. Create the base grid
 bins_grid = heatmaps.create_bins(BIN_SIZE,ARENA_DIAMETER)
-time_map_raw = heatmaps.calculate_time_in_bin(bins_grid, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
+time_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
 time_map_smoothed = heatmaps.smooth(time_map_raw, gaussian_kernel, bins_grid)
 
 res_list = []
@@ -175,14 +178,14 @@ final_rates_map = []
 
 for channel in CHANNELS:
     
-    mua_signal, og_sig = MUA.create_mua_signal(dat_data, channel, START_SAMPLE, DURATION, SAMPLE_RATE)
-    og_sig = signal.resample_poly(og_sig, 1250, SAMPLE_RATE)
+    mua_signal, og_sig = MUA.create_mua_signal(dat_data, channel, START_SAMPLE, DURATION, RES_SAMPLING_RATE)
+    og_sig = signal.resample_poly(og_sig, 1250, RES_SAMPLING_RATE)
     res_list.append(mua_signal)
  
     # --- Run Analysis Pipeline ---
 
     # 2. Calculate spike and time maps
-    spike_map_raw, vacants = MUA.bin_mua_count(bins_grid, mua_signal, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER)    
+    spike_map_raw = MUA.bin_mua_count(bins_grid, mua_signal, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER)    
     # 4. Perform smoothing
     spike_map_smoothed =heatmaps.smooth(spike_map_raw, gaussian_kernel, bins_grid)
 
@@ -196,7 +199,7 @@ for channel in CHANNELS:
 recording_duration_sec = 10800  # 3 hours
 min_start = 1800   # after 30 min
 max_start = 9000   # before last 30 min
-n_windows = 50
+n_windows = 100
 
 # Generate random start times (in seconds)
 np.random.seed(42)  # for reproducibility
@@ -297,8 +300,23 @@ chance_levels = []
 errors = []
 
 for bin_size in bin_sizes:
+    bins_grid = heatmaps.create_bins(bin_size,ARENA_DIAMETER)
+    time_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid, x_smooth, y_smooth, bin_size, ARENA_DIAMETER, POS_SAMPLING_RATE)
+    time_map_smoothed = heatmaps.smooth(time_map_raw, gaussian_kernel, bins_grid)
+    prior_map = prediction.bins_prior(time_map_smoothed)
+    final_rates_map = []
     prediction_bins = []
     actual_bins = []
+    for channel in CHANNELS:
+        # 2. Calculate spike and time maps
+        spike_map_raw = MUA.bin_mua_count(bins_grid, mua_signal, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER)    
+        # 4. Perform smoothing
+        spike_map_smoothed =heatmaps.smooth(spike_map_raw, gaussian_kernel, bins_grid)
+
+        # Final rates map
+        rates_map = spike_map_smoothed / time_map_smoothed
+        final_rates_map.append(heatmaps.remove_vacants(rates_map, vacants))
+
 
     for start in start_times:
         log_poiss = prediction.MB_PBR(res_list, start, test_duration, final_rates_map)

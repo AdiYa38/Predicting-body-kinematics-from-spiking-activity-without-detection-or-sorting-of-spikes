@@ -89,7 +89,7 @@ def bin_mua_count(bins_matrix, mua_signal, x_values, y_values, bin_size_cm, aren
     Returns:
         tuple: A tuple containing:
             - mua_rate_matrix (np.ndarray): A 2D matrix of mean MUA rates per bin.
-            - vacant_matrix (np.ndarray): A 2D boolean matrix indicating unvisited or zero-MUA bins.
+            
     """
     
     # Define flags
@@ -131,11 +131,9 @@ def bin_mua_count(bins_matrix, mua_signal, x_values, y_values, bin_size_cm, aren
     #                             out=np.zeros_like(mua_sum_matrix),
     #                             where=visit_count_matrix != 0)
     
-    # Create the vacant matrix
-    # A bin is 'vacant' if it was not visited OR if it's outside the arena circle
-    vacant_matrix = (visit_count_matrix == 0) | (bins_matrix == OUTSIDE_FLAG)
+   
     
-    return mua_sum_matrix, vacant_matrix
+    return mua_sum_matrix
 
     
    
