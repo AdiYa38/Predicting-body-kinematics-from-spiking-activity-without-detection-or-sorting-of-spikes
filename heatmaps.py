@@ -326,31 +326,63 @@ def cover_vacants(bins_grid, map, vacants):
     
     return map_copy
 
+def change_grid (map, new_bin_size, ARENA_DIAMETER, vacants, curr_bin_size = 1):
+
+    # Calculate dimensions
+    current_n = map.shape[0]
+    new_n = ARENA_DIAMETER // new_bin_size
+    factor = current_n // new_n
+
+    # Calculate the new_map
+    temp_map = map.copy()
+    temp_map[temp_map == -1] = 0
+    new_map = temp_map.reshape(new_n, factor, new_n, factor).swapaxes(1, 2).sum(axis=(2, 3))
+    
+    # Set outside flags
+    outside_mask = (map == -1)
+    outside_counts = outside_mask.reshape(new_n, factor, new_n, factor).swapaxes(1, 2).sum(axis=(2, 3))
+    new_map[outside_counts == factor**2] = -1
+
+    # Calculate the new_vacants map
+    new_vacants = np.zeros((new_n, new_n), dtype=int)
+    vacant_counts = vacants.reshape(new_n, factor, new_n, factor).swapaxes(1, 2).sum(axis=(2, 3))
+    new_vacants[vacant_counts == factor**2] = 1
+    new_vacants[new_map == -1] = -1
+
+    # Create the new grid
+    new_grid = create_bins(new_bin_size, ARENA_DIAMETER)
+    
+    return new_map, new_vacants, new_grid
 
 def rates_map(bin_size, cell_id, x_values, y_values, tet_res, clu, 
               KERNEL_SIZE = 7, ARENA_DIAMETER = 100, POS_SAMPLING_RATE = 1250):
     res = data.get_cell_spike_times(clu, tet_res, cell_id)
 
     # 1. Create the base grid
-    bins_grid = create_bins(bin_size, ARENA_DIAMETER)
+    init_bin_size = 1 
+    bins_grid_1cm = create_bins(init_bin_size, arena_diameter_cm=ARENA_DIAMETER)
 
     # 2. Calculate spike and time maps
-    spike_map_raw = bins_spikes_count(bins_grid, res, x_values, y_values, bin_size, ARENA_DIAMETER)
-    time_map_raw, vacants = calculate_time_in_bin(bins_grid, x_values, y_values, bin_size, ARENA_DIAMETER, POS_SAMPLING_RATE)
+    spike_map_raw = bins_spikes_count(bins_grid_1cm, res, x_values, y_values, init_bin_size, ARENA_DIAMETER)
+    time_map_raw, vacants = calculate_time_in_bin(bins_grid_1cm, x_values, y_values, init_bin_size, ARENA_DIAMETER, POS_SAMPLING_RATE)
 
     # 3. Create smoothing kernel
     gaussian_kernel = create_gaussian_kernel(size=KERNEL_SIZE)
 
     # 4. Cover vacants
-    spike_map_covered = cover_vacants(bins_grid, spike_map_raw, vacants)
-    time_map_covered = cover_vacants(bins_grid,time_map_raw, vacants)
+    spike_map_covered = cover_vacants(bins_grid_1cm, spike_map_raw, vacants)
+    time_map_covered = cover_vacants(bins_grid_1cm,time_map_raw, vacants)
 
     # 5. Perform smoothing
-    spike_map_smoothed = smooth(spike_map_covered, gaussian_kernel, bins_grid)
-    time_map_smoothed = smooth(time_map_covered, gaussian_kernel, bins_grid)
+    spike_map_smoothed = smooth(spike_map_covered, gaussian_kernel, bins_grid_1cm)
+    time_map_smoothed = smooth(time_map_covered, gaussian_kernel, bins_grid_1cm)
+
+    # 6. Change bins size
+    spike_map_sized, new_vacants, bins_grid = change_grid(spike_map_smoothed, bin_size, ARENA_DIAMETER, vacants, init_bin_size)
+    time_map_sized, new_vacants, bins_grid = change_grid(time_map_smoothed, bin_size, ARENA_DIAMETER, vacants, init_bin_size)
 
     # Final rates map
-    rates_map = spike_map_smoothed / time_map_smoothed
-    final_rates_map = remove_background(remove_vacants(rates_map, vacants, True), bins_grid)
+    rates_map = spike_map_sized / time_map_sized
+    final_rates_map = remove_background(remove_vacants(rates_map, new_vacants, True), bins_grid)
 
     return final_rates_map
