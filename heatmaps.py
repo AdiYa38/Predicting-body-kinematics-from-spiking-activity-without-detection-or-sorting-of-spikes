@@ -326,6 +326,20 @@ def cover_vacants(bins_grid, map, vacants):
     
     return map_copy
 
+def max_val_to_show(m):
+    # Temporarily remove NaN values to get an accurate count of valid elements
+    valid_elements = m[~np.isnan(m)]
+    
+    if valid_elements.size <= 100:
+        # For small arrays, return the absolute maximum
+        val = np.nanmax(m)
+    else:
+        # For larger arrays, calculate the 99.5th percentile
+        val = np.nanpercentile(m, 99.5)
+        
+    return val
+
+
 def change_grid (map, new_bin_size, ARENA_DIAMETER, vacants, curr_bin_size = 1):
 
     # Calculate dimensions
@@ -385,4 +399,4 @@ def rates_map(bin_size, cell_id, x_values, y_values, tet_res, clu,
     rates_map = spike_map_sized / time_map_sized
     final_rates_map = remove_background(remove_vacants(rates_map, new_vacants, True), bins_grid)
 
-    return final_rates_map
+    return final_rates_map, bins_grid
