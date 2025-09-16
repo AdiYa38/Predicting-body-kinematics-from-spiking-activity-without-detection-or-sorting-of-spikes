@@ -124,7 +124,8 @@ def plot_map(ax, data, title, cmap='jet'):
     if -1 in data:
       data_to_plot[data == -1] = np.nan
     
-    im = ax.imshow(data_to_plot, cmap=cmap, origin='lower', interpolation='nearest')
+    max_val = heatmaps.max_val_to_show(data_to_plot)
+    im = ax.imshow(data_to_plot, cmap=cmap, origin='lower', interpolation='nearest', vmax=max_val)
     ax.set_title(title, fontsize=14)
     ax.set_xlabel("X[cm]")
     ax.set_ylabel("Y[cm]")
@@ -371,4 +372,5 @@ ax2.legend(lines + lines2, labels + labels2, loc='best')
 
 plt.tight_layout()
 plt.show()
+
 
