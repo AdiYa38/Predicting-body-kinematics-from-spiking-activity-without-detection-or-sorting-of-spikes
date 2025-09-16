@@ -89,7 +89,7 @@ def bin_mua_count(bins_matrix, mua_signal, x_values, y_values, bin_size_cm, aren
     Returns:
         tuple: A tuple containing:
             - mua_rate_matrix (np.ndarray): A 2D matrix of mean MUA rates per bin.
-            
+            - vacant_matrix (np.ndarray): A 2D boolean matrix indicating unvisited or zero-MUA bins.
     """
     
     # Define flags
@@ -131,9 +131,47 @@ def bin_mua_count(bins_matrix, mua_signal, x_values, y_values, bin_size_cm, aren
     #                             out=np.zeros_like(mua_sum_matrix),
     #                             where=visit_count_matrix != 0)
     
-   
+    # Create the vacant matrix
+    # A bin is 'vacant' if it was not visited OR if it's outside the arena circle
+    vacant_matrix = (visit_count_matrix == 0) | (bins_matrix == OUTSIDE_FLAG)
     
-    return mua_sum_matrix
+    return mua_sum_matrix, vacant_matrix
+
+def MUA_rate_map(mua_signal, x_values, y_values, BIN_SIZE, KERNEL_SIZE=7, ARENA_DIAMETER=100, POS_SAMPLING_RATE = 1250):
+
+    # 1. Create the base grid
+    init_bin_size = 1 
+    bins_grid_1cm = heatmaps.create_bins(init_bin_size, arena_diameter_cm=ARENA_DIAMETER)
+
+    # 2. Calculate MUA and time maps
+    # TODO: remove vacants returning from bin_mua_count and the accepting from here
+    x_smooth, y_smooth = data.smooth_location(x_values, y_values)
+    mua_map_raw,  = bin_mua_count(bins_grid, mua_signal, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER)
+    occupancy_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid_1cm, x_values, y_values, init_bin_size, ARENA_DIAMETER, POS_SAMPLING_RATE)
+
+    # 3. Create smoothing kernel
+    gaussian_kernel = heatmaps.create_gaussian_kernel(size=KERNEL_SIZE)
+
+        # 4. Cover vacants
+    mua_map_covered = heatmaps.cover_vacants(bins_grid_1cm, mua_map_raw, vacants)
+    occupancy_map_covered = heatmaps.cover_vacants(bins_grid_1cm, occupancy_map_raw, vacants)
+
+    # 5. Perform smoothing
+    mua_map_smoothed = heatmaps.smooth(mua_map_covered, gaussian_kernel, bins_grid_1cm)
+    occupancy_map_smoothed = heatmaps.smooth(occupancy_map_covered, gaussian_kernel, bins_grid_1cm)
+
+    # 6. Change bins size
+    mua_map_sized, new_vacants, bins_grid = heatmaps.change_grid(mua_map_smoothed, BIN_SIZE, ARENA_DIAMETER, vacants, init_bin_size)
+    occupancy_map_sized, new_vacants, bins_grid = heatmaps.change_grid(occupancy_map_smoothed, BIN_SIZE, ARENA_DIAMETER, vacants, init_bin_size)
+
+    # Final rates map
+    mua_rates_map = mua_map_sized / occupancy_map_sized
+    mua_rates_map = heatmaps.remove_vacants(mua_rates_map, new_vacants)
+
+    # TODO: Is this one necessary?
+    mua_map_sized[mua_map_sized == 0] = np.nan
+
+    return mua_rates_map, occupancy_map_sized, mua_map_sized
 
     
    
