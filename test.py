@@ -75,7 +75,8 @@ def plot_map(ax, data, title, cmap='jet'):
     if -1 in data:
       data_to_plot[data == -1] = np.nan
     
-    im = ax.imshow(data_to_plot, cmap=cmap, origin='lower', interpolation='nearest')
+    max_val = heatmaps.max_val_to_show(data_to_plot)
+    im = ax.imshow(data_to_plot, cmap=cmap, origin='lower', interpolation='nearest', vmax=data_to_plot)
     ax.set_title(title, fontsize=14)
     ax.set_xlabel("X[cm]")
     ax.set_ylabel("Y[cm]")
@@ -163,3 +164,4 @@ for start in start_times:
 
 accuracy = prediction.prediction_quality(prediction_bins, actual_bins)
 print(f"\nPrediction Accuracy: {accuracy:.2f}% over {len(start_times)} windows")
+
