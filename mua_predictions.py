@@ -16,7 +16,7 @@ N_CHANNELS = 136
 DAT_file = "dat/mP79_17.dat"
 EEG_FILE = "mp79_17/mP79_17.eeg"
 CHANNEL = 50
-START_SAMPLE = 57*60*RES_SAMPLING_RATE
+START_SAMPLE = 75*60*RES_SAMPLING_RATE
 
 DURATION = 0.2 # Duration in seconds
 KERNEL_SIZE = 7
@@ -86,13 +86,19 @@ time_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid, x_values, y_va
 spike_map_raw = MUA.bin_mua_count(bins_grid, mua_signal, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER)
 
 
-
-spike_map_smoothed = heatmaps.smooth(spike_map_raw, gaussian_kernel, bins_grid)
-time_map_smoothed = heatmaps.smooth(time_map_raw, gaussian_kernel, bins_grid)
+time_map_smoothed, new_vacants, bins_grid, vacants = heatmaps.smooth_map(
+    data_array=None,
+    x_values=x_values,
+    y_values=y_values,
+    vacants=None,
+    BIN_SIZE=BIN_SIZE,
+    time_data=True
+)
+mua_map_smoothed,_,_,_ = heatmaps.smooth_map(mua_signal,x_values,y_values,vacants,BIN_SIZE,time_data=False,from_mua=True)
 
 # Final rates map
-rates_map = spike_map_smoothed / time_map_smoothed
-final_rates_map = heatmaps.remove_vacants(rates_map, vacants)
+rates_map = mua_map_smoothed / time_map_smoothed
+final_rates_map = heatmaps.remove_vacants(rates_map, new_vacants)
 final_rates_map = heatmaps.remove_background(final_rates_map, bins_grid)
 spike_map_raw = heatmaps.remove_background(spike_map_raw, bins_grid)
 
@@ -135,7 +141,7 @@ def plot_map(ax, data, title, cmap='jet'):
 # Plot the four main results
 plot_map(axes[0, 0], spike_map_raw, "Raw MUA Map")
 plot_map(axes[0, 1], time_map_raw, "Raw Time Map")
-plot_map(axes[1, 0], spike_map_smoothed, "Smoothed MUA Map")
+plot_map(axes[1, 0], mua_map_smoothed,"Smoothed MUA Map")
 plot_map(axes[1, 1], time_map_smoothed, "Smoothed Time Map")#
 
 plt.tight_layout(rect=[0, 0, 1, 0.94])
@@ -172,7 +178,7 @@ DTYPE = np.int16
 # 1. Create the base grid
 bins_grid = heatmaps.create_bins(BIN_SIZE,ARENA_DIAMETER)
 time_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
-time_map_smoothed = heatmaps.smooth(time_map_raw, gaussian_kernel, bins_grid)
+time_map_smoothed, new_vacants, bins_grid, vacants = heatmaps.smooth_map(None,x_values, y_values,None,BIN_SIZE,time_data=True)
 
 res_list = []
 final_rates_map = []
@@ -188,16 +194,17 @@ for channel in CHANNELS:
     # 2. Calculate spike and time maps
     spike_map_raw = MUA.bin_mua_count(bins_grid, mua_signal, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER)    
     # 4. Perform smoothing
-    spike_map_smoothed =heatmaps.smooth(spike_map_raw, gaussian_kernel, bins_grid)
+    mua_map_smoothed,_,_,_ = heatmaps.smooth_map(mua_signal,x_values,y_values,vacants,BIN_SIZE,time_data=False,from_mua=True)
 
     # Final rates map
-    rates_map = spike_map_smoothed / time_map_smoothed
-    final_rates_map.append(heatmaps.remove_vacants(rates_map, vacants))
+    rates_map = mua_map_smoothed / time_map_smoothed
+    final_rates_map.append(heatmaps.remove_vacants(rates_map, new_vacants))
 
 
 #=== test prediction success ===
 # Recording parameters
 recording_duration_sec = 10800  # 3 hours
+
 min_start = 1800   # after 30 min
 max_start = 9000   # before last 30 min
 n_windows = 100
@@ -207,7 +214,7 @@ np.random.seed(42)  # for reproducibility
 start_times = np.random.randint(min_start, max_start, size=n_windows)
 test_duration = 6.0
 
-lambda_map = prediction.lambda_rate_per_bin(spike_map_smoothed, time_map_smoothed)
+#lambda_map = prediction.lambda_rate_per_bin(mua_map_smoothed, time_map_smoothed)
 prior_map = prediction.bins_prior(time_map_smoothed)
 
 prediction_bins = []
@@ -295,7 +302,7 @@ plt.show()
 
 # === plot preditions vs bin size 
 # === plot predictions vs bin size 
-bin_sizes = [1, 2, 3, 4, 5, 6, 8, 10, 15,20, 25, 33, 42, 50, 60, 75, 100]
+bin_sizes = [1, 2, 4, 5, 10, 20, 25, 50, 100]
 accuracies = []
 chance_levels = []
 errors = []
@@ -303,20 +310,22 @@ errors = []
 for bin_size in bin_sizes:
     bins_grid = heatmaps.create_bins(bin_size,ARENA_DIAMETER)
     time_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid, x_smooth, y_smooth, bin_size, ARENA_DIAMETER, POS_SAMPLING_RATE)
-    time_map_smoothed = heatmaps.smooth(time_map_raw, gaussian_kernel, bins_grid)
+    time_map_smoothed, new_vacants, bins_grid, vacants = heatmaps.smooth_map(None,x_values, y_values,None,bin_size,time_data=True)
     prior_map = prediction.bins_prior(time_map_smoothed)
+
     final_rates_map = []
     prediction_bins = []
     actual_bins = []
+
     for channel in CHANNELS:
         # 2. Calculate spike and time maps
-        spike_map_raw = MUA.bin_mua_count(bins_grid, mua_signal, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER)    
+        spike_map_raw = MUA.bin_mua_count(bins_grid, mua_signal, x_smooth, y_smooth, bin_size, ARENA_DIAMETER)    
         # 4. Perform smoothing
-        spike_map_smoothed =heatmaps.smooth(spike_map_raw, gaussian_kernel, bins_grid)
+        mua_map_smoothed,_,_,_ = heatmaps.smooth_map(mua_signal,x_values,y_values,vacants,bin_size,time_data=False,from_mua=True)
 
         # Final rates map
-        rates_map = spike_map_smoothed / time_map_smoothed
-        final_rates_map.append(heatmaps.remove_vacants(rates_map, vacants))
+        rates_map = mua_map_smoothed / time_map_smoothed
+        final_rates_map.append(heatmaps.remove_vacants(rates_map, new_vacants))
 
 
     for start in start_times:
@@ -372,5 +381,4 @@ ax2.legend(lines + lines2, labels + labels2, loc='best')
 
 plt.tight_layout()
 plt.show()
-
 

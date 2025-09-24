@@ -126,6 +126,7 @@ def bin_mua_count(bins_matrix, mua_signal, x_values, y_values, bin_size_cm, aren
             mua_sum_matrix[y_idx, x_idx] += mua_signal_valid[i]
             visit_count_matrix[y_idx, x_idx] += 1
 
+    mua_sum_matrix[mua_sum_matrix == 0] = -1
     # Calculate the mean MUA rate for each bin
     # mua_rate_matrix = np.divide(mua_sum_matrix, visit_count_matrix,
     #                             out=np.zeros_like(mua_sum_matrix),
@@ -133,11 +134,23 @@ def bin_mua_count(bins_matrix, mua_signal, x_values, y_values, bin_size_cm, aren
     
     # Create the vacant matrix
     # A bin is 'vacant' if it was not visited OR if it's outside the arena circle
-    vacant_matrix = (visit_count_matrix == 0) | (bins_matrix == OUTSIDE_FLAG)
+    # vacant_matrix = (visit_count_matrix == 0) | (bins_matrix == OUTSIDE_FLAG)
     
-    return mua_sum_matrix, vacant_matrix
+    return mua_sum_matrix#, vacant_matrix
 
-def MUA_rate_map(mua_signal, x_values, y_values, BIN_SIZE, KERNEL_SIZE=7, ARENA_DIAMETER=100, POS_SAMPLING_RATE = 1250):
+def occupancy_map(x_values, y_values, BIN_SIZE,KERNEL_SIZE=7,ARENA_DIAMETER=100, POS_SAMPLING_RATE = 1250):
+    init_bin_size = 1 
+    bins_grid_1cm = heatmaps.create_bins(init_bin_size, arena_diameter_cm=ARENA_DIAMETER)
+    x_smooth, y_smooth = data.smooth_location(x_values, y_values)
+    occupancy_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid_1cm, x_smooth, y_smooth, init_bin_size, ARENA_DIAMETER, POS_SAMPLING_RATE)
+    gaussian_kernel = heatmaps.create_gaussian_kernel(size=KERNEL_SIZE)
+    occupancy_map_covered = heatmaps.cover_vacants(bins_grid_1cm, occupancy_map_raw, vacants)
+    occupancy_map_smoothed = heatmaps.smooth(occupancy_map_covered, gaussian_kernel, bins_grid_1cm)
+    occupancy_map_sized, new_vacants, bins_grid = heatmaps.change_grid(occupancy_map_smoothed, BIN_SIZE, ARENA_DIAMETER, vacants, init_bin_size)
+
+    return occupancy_map_sized, new_vacants, bins_grid
+
+def MUA_rate_map(mua_signal, x_values, y_values, occupancy_map_sized, vacants ,bins_grid, BIN_SIZE, KERNEL_SIZE=7, ARENA_DIAMETER=100, POS_SAMPLING_RATE = 1250):
 
     # 1. Create the base grid
     init_bin_size = 1 
@@ -146,23 +159,22 @@ def MUA_rate_map(mua_signal, x_values, y_values, BIN_SIZE, KERNEL_SIZE=7, ARENA_
     # 2. Calculate MUA and time maps
     # TODO: remove vacants returning from bin_mua_count and the accepting from here
     x_smooth, y_smooth = data.smooth_location(x_values, y_values)
-    mua_map_raw,  = bin_mua_count(bins_grid, mua_signal, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER)
-    occupancy_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid_1cm, x_values, y_values, init_bin_size, ARENA_DIAMETER, POS_SAMPLING_RATE)
+    mua_map_raw = bin_mua_count(bins_grid, mua_signal, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER)
+    
 
     # 3. Create smoothing kernel
     gaussian_kernel = heatmaps.create_gaussian_kernel(size=KERNEL_SIZE)
 
         # 4. Cover vacants
     mua_map_covered = heatmaps.cover_vacants(bins_grid_1cm, mua_map_raw, vacants)
-    occupancy_map_covered = heatmaps.cover_vacants(bins_grid_1cm, occupancy_map_raw, vacants)
 
     # 5. Perform smoothing
     mua_map_smoothed = heatmaps.smooth(mua_map_covered, gaussian_kernel, bins_grid_1cm)
-    occupancy_map_smoothed = heatmaps.smooth(occupancy_map_covered, gaussian_kernel, bins_grid_1cm)
+    
 
     # 6. Change bins size
     mua_map_sized, new_vacants, bins_grid = heatmaps.change_grid(mua_map_smoothed, BIN_SIZE, ARENA_DIAMETER, vacants, init_bin_size)
-    occupancy_map_sized, new_vacants, bins_grid = heatmaps.change_grid(occupancy_map_smoothed, BIN_SIZE, ARENA_DIAMETER, vacants, init_bin_size)
+    
 
     # Final rates map
     mua_rates_map = mua_map_sized / occupancy_map_sized
@@ -171,7 +183,7 @@ def MUA_rate_map(mua_signal, x_values, y_values, BIN_SIZE, KERNEL_SIZE=7, ARENA_
     # TODO: Is this one necessary?
     mua_map_sized[mua_map_sized == 0] = np.nan
 
-    return mua_rates_map, occupancy_map_sized, mua_map_sized
+    return mua_rates_map
 
     
    
@@ -231,7 +243,6 @@ def MUA_rate_map(mua_signal, x_values, y_values, BIN_SIZE, KERNEL_SIZE=7, ARENA_
 
 
 # main()
-
 
 
 

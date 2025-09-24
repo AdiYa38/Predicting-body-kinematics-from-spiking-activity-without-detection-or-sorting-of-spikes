@@ -38,10 +38,29 @@ x_smooth, y_smooth = data.smooth_location(x_values, y_values)
 #     )
 
 
+# --- Plot  y location in time---
+start_time_seconds = 90 * 60  # 90 minutes in seconds
+duration_seconds = 5
+num_points = int(duration_seconds * POS_SAMPLING_RATE)
+time_axis = np.arange(num_points) / POS_SAMPLING_RATE
+start_index = int(start_time_seconds * POS_SAMPLING_RATE)
+y_raw_plot = y_values[start_index:start_index+num_points]
+y_smooth_plot = y_smooth[start_index:start_index+num_points]
+plt.figure(figsize=(12, 6))
+plt.plot(time_axis, y_raw_plot, label='Raw Y-Position', color='lightgray', linewidth=2)
+plt.plot(time_axis, y_smooth_plot, label='Smoothed Y-Position', color='blue', linewidth=2)
+plt.title(f'Y-Position Data over {duration_seconds} Seconds (Sampling Rate: {POS_SAMPLING_RATE} Hz)', fontsize=16)
+plt.xlabel('Time (seconds)', fontsize=12)
+plt.ylabel('Y-Position', fontsize=12)
+plt.legend()
+plt.grid(True, linestyle='--', alpha=0.6)
+plt.tight_layout()
+plt.show()
+
 # 1. Create the base grid
 bins_grid = heatmaps.create_bins(BIN_SIZE,ARENA_DIAMETER)
-time_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
-#time_map_smoothed = heatmaps.smooth(time_map_raw, gaussian_kernel, bins_grid)
+occupancy_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
+occupancy_map_smoothed, new_vacanta, bins_grid, vacants = heatmaps.smooth_map(None, x_smooth, y_smooth, None, BIN_SIZE,True )
 
 res_list = []
 final_rates_map = []
@@ -59,11 +78,11 @@ for tet, cell in zip(TETRODE_ID, CELL_ID):
     spike_map_raw = heatmaps.bins_spikes_count(bins_grid, res, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER)
     
     # 4. Perform smoothing
-    spike_map_smoothed =heatmaps.smooth(spike_map_raw, gaussian_kernel, bins_grid)
+    spike_map_smoothed,_,_,_ =heatmaps.smooth_map(res,x_smooth, y_smooth, vacants, BIN_SIZE)
 
     # Final rates map
-    rates_map = spike_map_raw / time_map_raw
-    final_rates_map.append(heatmaps.remove_vacants(rates_map, vacants))
+    rates_map = spike_map_raw / occupancy_map_raw
+    final_rates_map.append(heatmaps.remove_vacants(rates_map, new_vacanta))
 
 
 #=== test prediction success ===
@@ -78,8 +97,8 @@ np.random.seed(42)  # for reproducibility
 start_times = np.random.randint(min_start, max_start, size=n_windows)
 test_duration = 40.0
 
-#lambda_map = prediction.lambda_rate_per_bin(spike_map_smoothed, time_map_smoothed)
-prior_map = prediction.bins_prior(time_map_raw)
+#lambda_map = prediction.lambda_rate_per_bin(spike_map_smoothed, occupancy_map_smoothed)
+prior_map = prediction.bins_prior(occupancy_map_raw)
 
 prediction_bins = []
 actual_bins = []
@@ -167,7 +186,7 @@ plt.show()
 
 # === plot preditions vs bin size 
 # === plot predictions vs bin size 
-bin_sizes = [1, 2,  4, 5, 10, 20, 25, 50, 100]
+bin_sizes = [1, 2, 4, 5, 10, 20, 25, 50, 100]
 accuracies = []
 chance_levels = []
 errors = []
@@ -175,9 +194,9 @@ errors = []
 
 for bin_size in bin_sizes:
     bins_grid = heatmaps.create_bins(bin_size,ARENA_DIAMETER)
-    time_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid, x_smooth, y_smooth, bin_size, ARENA_DIAMETER, POS_SAMPLING_RATE)
-    time_map_smoothed = heatmaps.smooth(time_map_raw, gaussian_kernel, bins_grid)
-    prior_map = prediction.bins_prior(time_map_smoothed)
+    occupancy_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid, x_smooth, y_smooth, bin_size, ARENA_DIAMETER, POS_SAMPLING_RATE)
+    occupancy_map_smoothed, new_vacants, bins_grid, vacants = heatmaps.smooth_map(None, x_smooth, y_smooth, None, BIN_SIZE,True )
+    prior_map = prediction.bins_prior(occupancy_map_smoothed)
     res_list = []
     final_rates_map = []
 
@@ -194,11 +213,11 @@ for bin_size in bin_sizes:
         spike_map_raw = heatmaps.bins_spikes_count(bins_grid, res, x_smooth, y_smooth, bin_size, ARENA_DIAMETER)
         
         # 4. Perform smoothing
-        spike_map_smoothed =heatmaps.smooth(spike_map_raw, gaussian_kernel, bins_grid)
+        spike_map_smoothed,_,_,_ =heatmaps.smooth_map(res,x_smooth, y_smooth, vacants, BIN_SIZE)
 
         # Final rates map
-        rates_map = spike_map_smoothed / time_map_smoothed
-        final_rates_map.append(heatmaps.remove_vacants(rates_map, vacants))
+        rates_map = spike_map_smoothed / occupancy_map_smoothed
+        final_rates_map.append(heatmaps.remove_vacants(rates_map, new_vacants))
 
     prediction_bins = []
     actual_bins = []

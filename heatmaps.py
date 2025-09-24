@@ -1,6 +1,8 @@
 import numpy as np
 from scipy.ndimage import convolve, distance_transform_edt
 import data
+import MUA
+
 
 temp_bin_size_cm =10
 arena_curr_diam = 100
@@ -400,3 +402,26 @@ def rates_map(bin_size, cell_id, x_values, y_values, tet_res, clu,
     final_rates_map = remove_background(remove_vacants(rates_map, new_vacants, True), bins_grid)
 
     return final_rates_map, bins_grid
+
+
+def smooth_map(data_array, x_values, y_values,vacants, BIN_SIZE = 10,time_data = False, from_mua = False,
+                KERNEL_SIZE=7, ARENA_DIAMETER=100, POS_SAMPLING_RATE = 1250):
+    init_bin_size = 1 
+    bins_grid_1cm = create_bins(init_bin_size, arena_diameter_cm=ARENA_DIAMETER)
+    gaussian_kernel = create_gaussian_kernel(size=KERNEL_SIZE)
+    x_smooth, y_smooth = data.smooth_location(x_values, y_values)
+  
+    if time_data:
+        data_matrix, vacants = calculate_time_in_bin(bins_grid_1cm, x_smooth, y_smooth, init_bin_size, ARENA_DIAMETER, POS_SAMPLING_RATE)
+    else:
+        if from_mua:
+            data_matrix = MUA.bin_mua_count(bins_grid_1cm, data_array, x_smooth, y_smooth, init_bin_size, ARENA_DIAMETER)
+        else:
+            data_matrix = bins_spikes_count(bins_grid_1cm, data_array, x_smooth, y_smooth, init_bin_size, ARENA_DIAMETER)
+
+    
+    data_matrix_covered = cover_vacants(bins_grid_1cm,data_matrix, vacants)
+
+    data_matrix_smoothed = smooth(data_matrix_covered, gaussian_kernel, bins_grid_1cm)
+    data_matrix_sized, new_vacants, bins_grid = change_grid(data_matrix_smoothed, BIN_SIZE, ARENA_DIAMETER, vacants, init_bin_size)
+    return data_matrix_sized, new_vacants, bins_grid,vacants
