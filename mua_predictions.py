@@ -6,7 +6,7 @@ import prediction
 import MUA
 from scipy import signal
 # --- Simulation Parameters ---
-ARENA_DIAMETER = 100
+ARENA_DIAMETER = 80
 BIN_SIZE = 2
 RES_SAMPLING_RATE = 20000
 POS_SAMPLING_RATE = 1250
@@ -15,10 +15,10 @@ Y_CHANNEL = 125
 N_CHANNELS = 136
 DAT_file = "dat/mP79_17.dat"
 EEG_FILE = "mp79_17/mP79_17.eeg"
-CHANNEL = 50
+CHANNEL = 45
 START_SAMPLE = 75*60*RES_SAMPLING_RATE
 
-DURATION = 0.2 # Duration in seconds
+DURATION = 1 # Duration in seconds
 KERNEL_SIZE = 7
 DTYPE = np.int16
 
@@ -302,7 +302,7 @@ plt.show()
 
 # === plot preditions vs bin size 
 # === plot predictions vs bin size 
-bin_sizes = [1, 2, 4, 5, 10, 20, 25, 50, 100]
+bin_sizes = [1, 2, 4, 5, 10, 20, 40, 80]
 accuracies = []
 chance_levels = []
 errors = []

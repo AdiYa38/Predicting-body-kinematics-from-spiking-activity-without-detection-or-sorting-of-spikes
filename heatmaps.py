@@ -5,7 +5,7 @@ import MUA
 
 
 temp_bin_size_cm =10
-arena_curr_diam = 100
+arena_curr_diam = 80
 
 OUTSIDE_FLAG = -1
 INSIDE_FLAG = 0
@@ -146,7 +146,7 @@ def calculate_time_in_bin(bins, x_values, y_values, bin_size_cm, arena_diameter_
 
     # Create vacants matrix
     vacants = np.copy(bins)
-    vacants[time_in_bin == 0] = 1
+    vacants[time_in_bin == 0.0] = 1
 
     return time_in_bin, vacants
 
@@ -371,7 +371,7 @@ def change_grid (map, new_bin_size, ARENA_DIAMETER, vacants, curr_bin_size = 1):
     return new_map, new_vacants, new_grid
 
 def rates_map(bin_size, cell_id, x_values, y_values, tet_res, clu, 
-              KERNEL_SIZE = 7, ARENA_DIAMETER = 100, POS_SAMPLING_RATE = 1250):
+              KERNEL_SIZE = 7, ARENA_DIAMETER = arena_curr_diam, POS_SAMPLING_RATE = 1250):
     res = data.get_cell_spike_times(clu, tet_res, cell_id)
 
     # 1. Create the base grid
@@ -405,7 +405,7 @@ def rates_map(bin_size, cell_id, x_values, y_values, tet_res, clu,
 
 
 def smooth_map(data_array, x_values, y_values,vacants, BIN_SIZE = 10,time_data = False, from_mua = False,
-                KERNEL_SIZE=7, ARENA_DIAMETER=100, POS_SAMPLING_RATE = 1250):
+                KERNEL_SIZE=7, ARENA_DIAMETER=arena_curr_diam, POS_SAMPLING_RATE = 1250):
     init_bin_size = 1 
     bins_grid_1cm = create_bins(init_bin_size, arena_diameter_cm=ARENA_DIAMETER)
     gaussian_kernel = create_gaussian_kernel(size=KERNEL_SIZE)

@@ -5,15 +5,15 @@ import data
 import prediction
 
 # --- Simulation Parameters ---
-ARENA_DIAMETER = 100
+ARENA_DIAMETER = 80
 BIN_SIZE = 10
 RES_SAMPLING_RATE = 20000
 POS_SAMPLING_RATE = 1250
 X_CHANNEL = 124
 Y_CHANNEL = 125
 N_CHANNELS = 136
-CELL_ID = 7
-TETRODE_ID = 1
+CELL_ID = 13
+TETRODE_ID = 2
 KERNEL_SIZE = 7
 EEG_FILE = "mp79_17/mP79_17.eeg"
 DTYPE = np.int16
@@ -44,8 +44,8 @@ bins = round(ARENA_DIAMETER/BIN_SIZE)
 max_val = heatmaps.max_val_to_show(spike_map_raw)
 plt.figure()
 plt.imshow(spike_map_raw, cmap='jet', origin='lower', vmax=max_val)
-plt.colorbar(label='Spikes Count')
-plt.title(f"Spike count map for unit {CELL_ID}.{TETRODE_ID}, ({bins}x{bins})")
+plt.colorbar(label='Spikes')
+plt.title(f"Spike count map for unit {TETRODE_ID}.{CELL_ID}, ({bins}x{bins})")
 plt.xlabel("X [cm]")
 plt.ylabel("Y [cm]")
 
@@ -53,17 +53,3 @@ plt.show()
 
 
 
-if -1 in occupancy_map_raw:
-      occupancy_map_raw[data == -1] = np.nan
-plt.figure(figsize=(8, 8))
-
-max_val = np.nanmax(occupancy_map_raw) if np.nanmax(occupancy_map_raw) > 0 else 1
-im = plt.imshow(occupancy_map_raw, cmap='jet', origin='lower', interpolation='nearest', vmax=max_val)
-    
-    # Add a color bar
-plt.colorbar(im, fraction=0.046, pad=0.04)
-plt.title(f'Occupancy Map ({bins}x{bins})', fontsize=16)
-plt.xlabel('X [cm]', fontsize=12)
-plt.ylabel('Y [cm]', fontsize=12)
-
-plt.show()

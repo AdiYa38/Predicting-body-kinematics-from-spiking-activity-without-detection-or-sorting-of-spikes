@@ -4,15 +4,15 @@ import heatmaps
 import data
 import prediction
 # --- Simulation Parameters ---
-ARENA_DIAMETER = 100
+ARENA_DIAMETER = 80
 BIN_SIZE = 50
 RES_SAMPLING_RATE = 20000
 POS_SAMPLING_RATE = 1250
 X_CHANNEL = 124
 Y_CHANNEL = 125
 N_CHANNELS = 136
-CELL_ID =  np.array([7,11,11, 4])#, 1, 2, 3, 4,1,2,3,4,1,2,3,4,1,2,3,4, 5,6,7,8, 6,7,8,5])
-TETRODE_ID = np.array([1,8,2, 3])#, 1, 1, 1, 1,2,2,2,2,3,3,3,3,4,4,4,4, 5,5,5,5, 6,6,6,6])
+CELL_ID =  np.array([7,2,11, 4, 1, 2, 3, 4,1,2,3,4,1,2,3,4,1,2,3,4, 5,6,7,8, 6,7,8,5])
+TETRODE_ID = np.array([1,1,2, 3, 1, 1, 1, 1,2,2,2,2,3,3,3,3,4,4,4,4, 5,5,5,5, 6,6,6,6])
 KERNEL_SIZE = 7
 EEG_FILE = "mp79_17/mP79_17.eeg"
 DTYPE = np.int16
@@ -24,18 +24,20 @@ x_values, y_values, x_in, y_in = data.import_position_data(eeg_data, X_CHANNEL, 
 gaussian_kernel = heatmaps.create_gaussian_kernel(size=KERNEL_SIZE)
 
 x_smooth, y_smooth = data.smooth_location(x_values, y_values)
-# data.plot_mouse_animation(
-#         x=x_smooth,
-#         y=y_smooth,
-#         start_time_minutes=90,
-#         duration_seconds=100
-#     )
-# data.plot_mouse_animation(
-#         x=x_values,
-#         y=y_values,
-#         start_time_minutes=90,
-#         duration_seconds=100
-#     )
+data.plot_mouse_animation(
+        x=x_smooth,
+        y=y_smooth,
+        start_time_minutes=90,
+        duration_seconds=100,
+        title="Smoothed"
+    )
+data.plot_mouse_animation(
+        x=x_values,
+        y=y_values,
+        start_time_minutes=90,
+        duration_seconds=100,
+        title="Raw"
+    )
 
 
 # --- Plot  y location in time---
@@ -166,7 +168,7 @@ ax1.plot(durations, accuracies, marker='o', color='b', label="Accuracy")
 ax1.plot(durations, chance_levels, linestyle='--', color='r', label="Chance")
 ax1.set_xlabel('Test Duration (s)')
 ax1.set_ylabel('Prediction Accuracy (%)')
-ax1.set_title('Prediction Accuracy vs Test Duration')
+ax1.set_title(f'Prediction Accuracy vs Test Duration with {CELL_ID.size} Cells, (2X2)')
 ax1.grid(True)
 
 # Create a secondary y-axis that shares the same x-axis
@@ -186,7 +188,7 @@ plt.show()
 
 # === plot preditions vs bin size 
 # === plot predictions vs bin size 
-bin_sizes = [1, 2, 4, 5, 10, 20, 25, 50, 100]
+bin_sizes = [1, 2, 4, 5, 10, 20, 40, 80]
 accuracies = []
 chance_levels = []
 errors = []
@@ -195,7 +197,7 @@ errors = []
 for bin_size in bin_sizes:
     bins_grid = heatmaps.create_bins(bin_size,ARENA_DIAMETER)
     occupancy_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid, x_smooth, y_smooth, bin_size, ARENA_DIAMETER, POS_SAMPLING_RATE)
-    occupancy_map_smoothed, new_vacants, bins_grid, vacants = heatmaps.smooth_map(None, x_smooth, y_smooth, None, BIN_SIZE,True )
+    occupancy_map_smoothed, new_vacants, bins_grid, vacants = heatmaps.smooth_map(None, x_smooth, y_smooth, None, bin_size,True )
     prior_map = prediction.bins_prior(occupancy_map_smoothed)
     res_list = []
     final_rates_map = []
@@ -213,7 +215,7 @@ for bin_size in bin_sizes:
         spike_map_raw = heatmaps.bins_spikes_count(bins_grid, res, x_smooth, y_smooth, bin_size, ARENA_DIAMETER)
         
         # 4. Perform smoothing
-        spike_map_smoothed,_,_,_ =heatmaps.smooth_map(res,x_smooth, y_smooth, vacants, BIN_SIZE)
+        spike_map_smoothed,_,_,_ =heatmaps.smooth_map(res,x_smooth, y_smooth, vacants, bin_size)
 
         # Final rates map
         rates_map = spike_map_smoothed / occupancy_map_smoothed
@@ -260,7 +262,7 @@ ax1.plot(bin_sizes, accuracies, marker='o', color='b', label="Accuracy")
 ax1.plot(bin_sizes, chance_levels, linestyle='--', color='r', label="Chance")
 ax1.set_xlabel('Bin Size (cm)')
 ax1.set_ylabel('Prediction Accuracy (%)')
-ax1.set_title('Prediction Accuracy vs Bin Size')
+ax1.set_title(f'Prediction Accuracy vs Bin Size with {CELL_ID.size} Cells, Duration 40s')
 ax1.grid(True)
 
 # Create a secondary y-axis that shares the same x-axis

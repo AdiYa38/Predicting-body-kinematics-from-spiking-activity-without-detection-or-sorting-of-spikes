@@ -4,15 +4,15 @@ import heatmaps
 import data
 import prediction
 # --- Simulation Parameters ---
-ARENA_DIAMETER = 100
-BIN_SIZE = 2
+ARENA_DIAMETER = 80
+BIN_SIZE = 40
 RES_SAMPLING_RATE = 20000
 POS_SAMPLING_RATE = 1250
 X_CHANNEL = 124
 Y_CHANNEL = 125
 N_CHANNELS = 136
-CELL_ID = 11
-TETRODE_ID = 8
+CELL_ID = 2
+TETRODE_ID = 1
 KERNEL_SIZE =7 
 EEG_FILE = "mp79_17/mP79_17.eeg"
 DTYPE = np.int16
@@ -24,8 +24,9 @@ eeg_data = data.get_eeg_data(EEG_FILE, DTYPE, N_CHANNELS)
 tet_res, clu = data.get_tetrode_spike_times("mp79_17/mP79_17.clu.", "mp79_17/mP79_17.res.", TETRODE_ID, POS_SAMPLING_RATE, RES_SAMPLING_RATE)
 
 x_values, y_values, x_in, y_in = data.import_position_data(eeg_data, X_CHANNEL, Y_CHANNEL, ARENA_DIAMETER)
+x_smooth, y_smooth = data.smooth_location(x_values, y_values)
 
-#plot x,y 
+# #plot x,y 
 # plt.figure(figsize=(8, 6))
 # plt.scatter(x_values, y_values, s=1, alpha=0.6)  # s = dot size
 # plt.xlabel("X [cm]")
@@ -50,15 +51,15 @@ res = data.get_cell_spike_times(clu, tet_res, CELL_ID)
 bins_grid = heatmaps.create_bins(BIN_SIZE,ARENA_DIAMETER)
 
 # 2. Calculate spike and time maps
-spike_map_raw = heatmaps.bins_spikes_count(bins_grid, res, x_values, y_values, BIN_SIZE, ARENA_DIAMETER)
-time_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid, x_values, y_values, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
+spike_map_raw = heatmaps.bins_spikes_count(bins_grid, res, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER)
+time_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
 
 # 3. Create smoothing kernel
 gaussian_kernel = heatmaps.create_gaussian_kernel(size=KERNEL_SIZE)
 
 # 4. Perform smoothing
-occupancy_map_smoothed,new_vacants, bins_grid,vacants  = heatmaps.smooth_map(None,x_values, y_values, None, BIN_SIZE,True)
-spike_map_smoothed,_,_,_ = heatmaps.smooth_map(res, x_values, y_values,vacants, BIN_SIZE)
+occupancy_map_smoothed,new_vacants, bins_grid,vacants  = heatmaps.smooth_map(None,x_smooth, y_smooth, None, BIN_SIZE,True)
+spike_map_smoothed,_,_,_ = heatmaps.smooth_map(res, x_smooth, y_smooth,vacants, BIN_SIZE)
 
 # Final rates map
 rates_map = spike_map_smoothed / occupancy_map_smoothed
@@ -79,20 +80,26 @@ fig.suptitle(f"Spatial Analysis Results for Cell {TETRODE_ID}.{CELL_ID} ", fonts
 def plot_map(ax, data, title, cmap='jet'):
     data_to_plot = np.copy(data).astype(float)
     if -1 in data:
-      data_to_plot[data == -1] = np.nan
+        data_to_plot[data == -1] = np.nan
     
     max_val = heatmaps.max_val_to_show(data_to_plot)
-    im = ax.imshow(data_to_plot, cmap=cmap, origin='lower', interpolation='nearest', vmax=max_val)
+    # --- MODIFICATION IS HERE ---
+    # Set the extent to map array indices to the actual arena dimensions (0 to ARENA_DIAMETER)
+    extent = [0, ARENA_DIAMETER, 0, ARENA_DIAMETER]
+    im = ax.imshow(data_to_plot, cmap=cmap, origin='lower', interpolation='nearest', vmax=max_val, extent=extent)
+    # --- END MODIFICATION ---
     ax.set_title(title, fontsize=14)
     ax.set_xlabel("X[cm]")
     ax.set_ylabel("Y[cm]")
+    # Ensure the plot remains square (if the arena is square)
+    ax.set_aspect('equal', adjustable='box') 
     fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
 
 # Plot the four main results
 plot_map(axes[0, 0], spike_map_plot, "Spike Count Map")
-plot_map(axes[0, 1], time_map_plot, "Occupancy Map")
+plot_map(axes[0, 1], time_map_raw, "Occupancy Map")
 plot_map(axes[1, 0], spike_map_smoothed_plot, "Smoothed Spike Count Map")
-plot_map(axes[1, 1], occupancy_map_smoothed_plot, "Smoothed Occupancy Map")#
+plot_map(axes[1, 1], occupancy_map_smoothed, "Smoothed Occupancy Map")#
 
 plt.tight_layout(rect=[0, 0, 1, 0.94])
 plt.subplots_adjust(hspace=0.3, wspace=0.3)

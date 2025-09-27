@@ -40,7 +40,7 @@ def convert_to_cm(x_raw):
     vRange = 10.0  # Volts
     vDAC = [-3.8e-3, 4.64]  # Volts
     maxBins = 640.0  # pixels
-    pix2cm = 0.366  # cm
+    pix2cm = 0.294  # cm
     nBits = 16.0
 
     
@@ -58,8 +58,8 @@ def import_position_data(eeg_data, x_chan, y_chan, arena_diameter):
     y = get_eeg_channels(eeg_data, y_chan)
    
     #convert to cm and center around 0
-    x = convert_to_cm(x)-124
-    y = convert_to_cm(y)-72.5
+    x = convert_to_cm(x)-99
+    y = convert_to_cm(y)-60
 
     # filter data outside the arena
     r = np.sqrt(x**2 + y**2)
@@ -161,7 +161,7 @@ def smooth_location(x_cm, y_cm):
     return smoothed_x, smoothed_y
 
 
-def plot_mouse_animation(x, y, start_time_minutes, duration_seconds, sample_rate=1250):
+def plot_mouse_animation(x, y, start_time_minutes, duration_seconds,title, sample_rate=1250):
     """
     Plots an animated visualization of mouse movement data.
 
@@ -200,7 +200,7 @@ def plot_mouse_animation(x, y, start_time_minutes, duration_seconds, sample_rate
 
     # Set up the plot
     fig, ax = plt.subplots(figsize=(10, 8))
-    ax.set_title(f'Mouse Movement Animation from {start_time_minutes} min')
+    ax.set_title(f'Mouse {title} Movement Animation from {start_time_minutes} min')
     ax.set_xlabel('X-coordinate')
     ax.set_ylabel('Y-coordinate')
     ax.set_facecolor('#f3f4f6') # Light gray background
