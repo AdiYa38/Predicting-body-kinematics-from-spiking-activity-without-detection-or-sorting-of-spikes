@@ -28,46 +28,26 @@ def create_grid(N):
     X, Y = np.meshgrid(x, y)
     return (X, Y)
 
-def fit_gaussians(BIN_SIZE, show = False):
-    # Create smoothing kernel
-    gaussian_kernel = heatmaps.create_gaussian_kernel(size=KERNEL_SIZE)
+def fit_gaussians(BIN_SIZE, show=False):
 
     # Load Data
     eeg_data = data.get_eeg_data(EEG_FILE, DTYPE, N_CHANNELS)
     cell_maps = []
 
-    for shank in range(1, 13):
+    for shank in range(1, 12):
         tet_res, clu = data.get_tetrode_spike_times("mp79_17/mP79_17.clu.", "mp79_17/mP79_17.res.", shank, POS_SAMPLING_RATE, RES_SAMPLING_RATE)
-        for cell in [2]:# range(2, 18):
-            res = data.get_cell_spike_times(clu, tet_res, cell)
+        for cell in range(2, 18):
             x_values, y_values, x_in, y_in = data.import_position_data(eeg_data, X_CHANNEL, Y_CHANNEL, ARENA_DIAMETER)
-
-            # Create map for neuron
-            bins_grid = heatmaps.create_bins(BIN_SIZE,ARENA_DIAMETER)
-            spike_map_raw, vacants = heatmaps.bins_spikes_count(bins_grid, res, x_values, y_values, BIN_SIZE, ARENA_DIAMETER)
-            time_map_raw = heatmaps.calculate_time_in_bin(bins_grid, x_values, y_values, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
-            spike_map_covered  = heatmaps.cover_vacants(bins_grid, spike_map_raw, vacants)
-            time_map_covered = heatmaps.cover_vacants(bins_grid, time_map_raw, vacants)
-            spike_map_smoothed = heatmaps.smooth(spike_map_covered, gaussian_kernel, bins_grid)
-            time_map_smoothed = heatmaps.smooth(time_map_covered, gaussian_kernel, bins_grid)
+            final_rates_map, bins_grid = heatmaps.rates_map(BIN_SIZE, cell, x_values, y_values, tet_res, clu)
             
-            # Handle division by zero safely DELETE?
-            #with np.errstate(divide='ignore', invalid='ignore'):
-            rates_map = spike_map_smoothed / time_map_smoothed
-            
-            # Replace NaNs or Infs that result from division by zero with 0
-            rates_map[~np.isfinite(rates_map)] = 0
-            
-            final_rates_map = heatmaps.remove_vacants(rates_map, vacants)
-            
-            cell_maps.append([final_rates_map, cell, shank])
+            cell_maps.append([final_rates_map, cell, shank, bins_grid])
             print(f"Finished cell {cell} of shank {shank}")
 
-        # --- Gaussian Fitting Loop ---
-        gaussian_fits = []
-
+    # --- Gaussian Fitting Loop ---
+    gaussian_fits = []
+    
     for i, item in enumerate(cell_maps):
-        heatmap_data, cell_id, shank_id = item
+        heatmap_data, cell_id, shank_id, bins_grid = item
         N = heatmap_data.shape[0]
         X, Y = create_grid(N)
 
@@ -94,15 +74,10 @@ def fit_gaussians(BIN_SIZE, show = False):
             popt, pcov = scipy.optimize.curve_fit(gaussian_2d, coords_data, z_data, p0=initial_guess, maxfev=10000)
             
             z_predicted = gaussian_2d(coords_data, *popt)
-            
-            # Calculate Sum of Squared Residuals
             ss_res = np.sum((z_data - z_predicted)**2)
-            # Calculate Total Sum of Squares
             ss_tot = np.sum((z_data - np.mean(z_data))**2)
-            # Calculate R-squared
             r_squared = 1 - (ss_res / ss_tot) if ss_tot > 0 else 0
             
-            # Store results with the new metric
             gaussian_fits.append({'matrix_index': i, 'cell_id': cell_id, 'shank_id': shank_id, 'params': popt, 'r_squared': r_squared})
             print(f"Clu {cell_id} of shank {shank_id} has R-squared: {r_squared:.4f}")
 
@@ -112,28 +87,35 @@ def fit_gaussians(BIN_SIZE, show = False):
 
     print(f"show = {show}")
     if (show):
+        extent_in_cm = [0, ARENA_DIAMETER, 0, ARENA_DIAMETER]
+
         for fit in gaussian_fits:
             matrix_index = fit['matrix_index']
             cell_id = fit['cell_id']
             shank_id = fit.get('shank_id', shank)
-            original_map = cell_maps[matrix_index][0].copy()
+            original_map, _, _, bins_grid = cell_maps[matrix_index]
+            original_map = original_map.copy()
+
+            # --- שינוי 1: חישוב ערכי המינימום והמקסימום להצגה ---
+            # נשתמש בערכים אלו בכל המפות כדי לשמור על סקאלה אחידה
+            max_val = heatmaps.max_val_to_show(original_map)
+            vmin = 0  # הנחה שקצב הירי אינו שלילי
 
             if fit['params'] is not None:
                 fit_params = fit['params']
                 
-                # Extract center coordinates for plotting
-                center_x = fit_params[1]
-                center_y = fit_params[2]
+                center_x_bins = fit_params[1]
+                center_y_bins = fit_params[2]
+                center_x_cm = center_x_bins * BIN_SIZE
+                center_y_cm = center_y_bins * BIN_SIZE
                 
                 N = original_map.shape[0]
                 X, Y = create_grid(N)
                 fitted_gaussian_map = gaussian_2d((X, Y), *fit_params)
                 
-                valid_data = original_map[~np.isnan(original_map) & (original_map != -1)]
-                vmin = valid_data.min() if len(valid_data) > 0 else 0
-                vmax = valid_data.max() if len(valid_data) > 0 else 1
+                # --- שינוי 2: הסרת החישוב הישן של vmin/vmax ---
+                # השורות שהיו כאן הוסרו כי הגדרנו vmin ו-max_val מחוץ לתנאי
                 
-                # Probably can be better written with remove background
                 vacant_mask = (original_map == -1) | np.isnan(original_map)
                 original_map[vacant_mask] = np.nan
                 fitted_gaussian_map[vacant_mask] = np.nan
@@ -142,21 +124,20 @@ def fit_gaussians(BIN_SIZE, show = False):
                 fig.suptitle(f'Shank: {shank_id}, Clu: {cell_id}\nR²: {fit["r_squared"]:.4f}', fontsize=16)
                 
                 # Plot 1: Original Firing Rate Map
-                im1 = ax1.imshow(original_map, cmap='jet', origin='lower', vmin=vmin, vmax=vmax)
+                # --- שינוי 3: שימוש ב-max_val שהוגדר מראש ---
+                im1 = ax1.imshow((heatmaps.remove_background(original_map, bins_grid)), cmap='jet', origin='lower', vmin=vmin, vmax=max_val, extent=extent_in_cm)
                 ax1.set_title('Original Firing Rate Map')
-                ax1.set_xlabel('X Bins')
-                ax1.set_ylabel('Y Bins')
-                # Mark the calculated center on the original map as well
-                ax1.plot(center_x, center_y, '+', color='red', markersize=12, markeredgewidth=2)
+                ax1.set_xlabel('X [cm]')
+                ax1.set_ylabel('Y [cm]')
+                ax1.plot(center_x_cm, center_y_cm, '+', color='red', markersize=12, markeredgewidth=2)
                 
                 # Plot 2: Fitted Gaussian Model
-                ax2.imshow(fitted_gaussian_map, cmap='jet', origin='lower', vmin=vmin, vmax=vmax)
-                # Update title to include center coordinates
-                ax2.set_title(f'Fitted Gaussian Model\nCenter: ({center_x:.2f}, {center_y:.2f})')
-                ax2.set_xlabel('X Bins')
+                # --- שינוי 3: שימוש ב-max_val שהוגדר מראש ---
+                ax2.imshow((heatmaps.remove_background(fitted_gaussian_map, bins_grid)), cmap='jet', origin='lower', vmin=vmin, vmax=max_val, extent=extent_in_cm)
+                ax2.set_title(f'Fitted Gaussian Model\nCenter: ({center_x_cm:.2f}, {center_y_cm:.2f}) cm')
+                ax2.set_xlabel('X [cm]')
                 ax2.set_yticklabels([])
-                # Add a marker for the Gaussian center
-                ax2.plot(center_x, center_y, '+', color='red', markersize=12, markeredgewidth=2)
+                ax2.plot(center_x_cm, center_y_cm, '+', color='red', markersize=12, markeredgewidth=2)
                 
                 fig.colorbar(im1, ax=[ax1, ax2], label='Firing Rate [spikes/sec]', shrink=0.7)
                 
@@ -167,13 +148,14 @@ def fit_gaussians(BIN_SIZE, show = False):
                 
                 vacant_mask = (original_map == -1) | np.isnan(original_map)
                 original_map[vacant_mask] = np.nan
-                im = ax.imshow(original_map, cmap='jet', origin='lower')
-                ax.set_xlabel('X Bins')
-                ax.set_ylabel('Y Bins')
+                # --- שינוי 3: שימוש ב-max_val שהוגדר מראש ---
+                im = ax.imshow(original_map, cmap='jet', origin='lower', extent=extent_in_cm, vmin=vmin, vmax=max_val)
+                ax.set_xlabel('X [cm]')
+                ax.set_ylabel('Y [cm]')
                 fig.colorbar(im, ax=ax, label='Firing Rate [spikes/sec]', shrink=0.8)
 
         plt.show()
 
     return gaussian_fits
 
-#fit_gaussians(True)
+#fit_gaussians(10, True)
