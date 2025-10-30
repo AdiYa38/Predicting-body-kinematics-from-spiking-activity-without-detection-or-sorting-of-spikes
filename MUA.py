@@ -5,6 +5,7 @@ import data
 from scipy import signal
 import prediction
 
+
 def create_mua_signal(DAT, channel,start_sample = 144000000, duration = 300,sample_rate = 20000):
     '''
     Create a Multi-Unit Activity (MUA) signal from the spike data.
@@ -20,7 +21,7 @@ def create_mua_signal(DAT, channel,start_sample = 144000000, duration = 300,samp
     '''
     raw_siganl = data.get_eeg_channels(DAT, channel)
     # Extract the relevant segment of the signal
-    sig = raw_siganl#[start_sample:start_sample + duration * sample_rate]  
+    sig = raw_siganl#[start_sample:start_sample + int(duration * sample_rate)]  
     # Normalize the signal
     sig = (sig/(2**16))*(245/192)
     #apply bandpass filter
@@ -29,7 +30,7 @@ def create_mua_signal(DAT, channel,start_sample = 144000000, duration = 300,samp
     nyquist = 1 * sample_rate
     low_norm = low_cutoff_hz / nyquist
     high_norm = high_cutoff_hz / nyquist
-    order = 5
+    order = 2
     b, a = signal.butter(order, [low_norm, high_norm], btype='band')
     bpf_filtered_sig = signal.filtfilt(b, a, sig)
     #RMS 
@@ -41,6 +42,7 @@ def create_mua_signal(DAT, channel,start_sample = 144000000, duration = 300,samp
     lpf_filtered_sig = np.sqrt(np.clip(lpf_filtered_sig, 0, None))
     # Resample to 1250 Hz
     MUA_signal = signal.resample_poly(lpf_filtered_sig, 1250, sample_rate)
+    MUA_signal = np.clip(MUA_signal, 0, None)
     return MUA_signal, sig
 
 def create_mua_file(DAT,start_sample = 144000000, duration = 300,sample_rate = 20000, n_channels=124):
@@ -185,64 +187,102 @@ def MUA_rate_map(mua_signal, x_values, y_values, occupancy_map_sized, vacants ,b
 
     return mua_rates_map
 
+
+
+def create_simulated_raw_signal(duration_sec=300, sample_rate=20000):
+    """
+    Creates a simulated raw neural signal (single channel) for testing MUA.
     
-   
+    The signal is structured in three parts:
+    1. Zeroed signal (100 microseconds).
+    2. Zeroed signal with occasional random spikes (first half of the remaining duration).
+    3. Zeroed signal with high-frequency, high-amplitude spikes (second half of the remaining duration).
+
+    Parameters:
+    - duration_sec: int, total duration of the signal in seconds.
+    - sample_rate: int, sampling rate in Hz.
+
+    Returns:
+    - simulated_sig: numpy array, the single-channel raw signal.
+    """
     
-# #main function to run the MUA signal creation
-# def main():
-#     # --- Simulation Parameters ---
-#     DAT_file = "dat/mP79_17.dat"
-#     CHANNEL = 5
-#     START_SAMPLE = 2253000
-#     DURATION = 10 # Duration in seconds
-#     SAMPLE_RATE = 20000  # Original sampling rate of the EEG data
-
-#     # Load EEG data
-#     dat_data = data.get_eeg_data(DAT_file, np.int16, 136)
-
-#     # Create MUA signal
-#     mua_signal, og_sig = create_mua_signal(dat_data, CHANNEL, START_SAMPLE, DURATION, SAMPLE_RATE)
-#     og_sig = signal.resample_poly(og_sig, 1250, SAMPLE_RATE)
-
-#     # --- Plotting the signals in time ---
-#     # Create a time array for the x-axis
-#     time_axis = np.linspace(0, DURATION, len(mua_signal), endpoint=False)
-
-#     y_min = np.min(og_sig)
-#     y_max = np.max(og_sig)
-
-#     plt.figure(figsize=(12, 6))
-
-#     # Plot the original signal with fixed y-axis limits
-#     plt.subplot(2, 1, 1)
-#     plt.plot(time_axis, og_sig)
-#     plt.title(f'Original Signal for Channel {CHANNEL}')
-#     plt.xlabel('Time (s)')
-#     plt.ylabel('Amplitude[microvolts]')
-#     plt.grid()
-#     # plt.ylim(y_min, y_max) # Set the y-axis limits
-
-#     # Plot the MUA signal with the same fixed y-axis limits
-#     plt.subplot(2, 1, 2)
-#     plt.plot(time_axis, mua_signal, color='orange')
-#     plt.title(f'MUA Signal')
-#     plt.xlabel('Time (s)')
-#     plt.ylabel('Amplitude[microvolts]')
-#     plt.grid()
-#     #plt.ylim(y_min, y_max) # Set the same y-axis limits
-
-#     plt.tight_layout()
-#     plt.show()
+    n_samples = duration_sec * sample_rate
+    simulated_sig = np.zeros(n_samples, dtype=np.float64)
+    
+    # --- Part 1: Zeroed Signal (100 microseconds) ---
+    # 100 microseconds = 0.0001 seconds
+    microsec_duration = 0.0001
+    n_samples_microsec = int(microsec_duration * sample_rate)
+    # The signal is already initialized to zero, but we define the end point
+    part1_end_idx = n_samples_microsec
+    # simulated_sig[0:part1_end_idx] is all zeros
+    
+    # --- Remaining duration (for Parts 2 and 3) ---
+    remaining_samples = n_samples - part1_end_idx
+    half_remaining = remaining_samples // 2
+    
+    # --- Part 2: Occasional Spikes (First half of remaining) ---
+    # Low spike density: e.g., 50 spikes total in this segment
+    
+    part2_start_idx = part1_end_idx
+    part2_end_idx = part1_end_idx + half_remaining
+    
+    num_spikes_low = 50
+    spike_amplitude = 500.0  # arbitrary amplitude
+    spike_width = 10         # width of the spike in samples (0.5ms at 20kHz)
+    
+    # Choose random indices for the spikes in this segment
+    spike_indices_low = np.random.choice(
+        np.arange(part2_start_idx, part2_end_idx - spike_width), 
+        size=num_spikes_low, 
+        replace=False
+    )
+    
+    # Generate the spikes (e.g., a simple inverted triangle or Gaussian)
+    for start_idx in spike_indices_low:
+        end_idx = start_idx + spike_width
+        # Simple negative spike (mimicking extracellular spike)
+        simulated_sig[start_idx] = -spike_amplitude * np.random.uniform(0.8, 1.2)
+        # Taper off over the width
+        for i in range(1, spike_width):
+             simulated_sig[start_idx + i] = simulated_sig[start_idx] * (1 - i / spike_width)
 
 
+    # --- Part 3: Plenty of Spikes (Second half of remaining) ---
+    # High spike density: e.g., 1000 spikes total in this segment
+    
+    part3_start_idx = part2_end_idx
+    part3_end_idx = n_samples
+    
+    num_spikes_high = 1000
+    spike_amplitude_high = 1500.0 # Higher amplitude
+    spike_width_high = 15         # Slightly wider spike
+    
+    # Choose random indices for the spikes in this segment
+    # Allow for overlapping spikes here for the "plenty of spikes" effect
+    spike_indices_high = np.random.choice(
+        np.arange(part3_start_idx, part3_end_idx - spike_width_high), 
+        size=num_spikes_high, 
+        replace=True # Allow repetition for high density
+    )
+    
+    # Generate the spikes
+    for start_idx in spike_indices_high:
+        end_idx = start_idx + spike_width_high
+        
+        # Add the spike to the signal (instead of setting it, to allow overlap)
+        simulated_sig[start_idx] += -spike_amplitude_high * np.random.uniform(0.8, 1.2)
+        
+        # Taper off
+        for i in range(1, spike_width_high):
+             simulated_sig[start_idx + i] += -spike_amplitude_high * np.random.uniform(0.8, 1.2) * (1 - i / spike_width_high)
+
+    return simulated_sig
 
 
 
 
 
-
-
-# main()
 
 
 

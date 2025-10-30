@@ -123,6 +123,7 @@ def get_actual_bin (x, y, start_time, duration,bin_size,arena_diameter, pos_samp
     # Check if inside arena
     if np.sqrt(x_avg**2 + y_avg**2) > arena_radius:
         return None
+    
 
     # Convert to bin indices
     col_idx = int((x_avg + arena_radius) / bin_size)  # x --> j
@@ -132,6 +133,53 @@ def get_actual_bin (x, y, start_time, duration,bin_size,arena_diameter, pos_samp
         return (row_idx, col_idx)
     else:
         return None
+    
+    # '''
+    #     calculates the actual bin location in time frame
+    #     Args:
+    #         x(array): x location in time
+    #         y(array): y location in time
+    #         start_time(float): start time in seconds of the section we want to evaluate in seconds
+    #         duration(int): for how long we want to calculate in seconds
+    #         bin_size(float):size of each bin
+    #         arena_diameter(float): size of arena
+    #         pos_sample_rate(int): helps translate spikes to seconds
+    #     Returns:
+    #         (int,int): the actual location in time frame
+    # '''
+    # arena_radius = arena_diameter / 2.0
+    # num_bins_per_axis = int(np.ceil(arena_diameter / bin_size))
+
+    # start_sample = int(start_time * pos_sample_rate)
+    # end_sample = int((start_time + duration) * pos_sample_rate)
+
+    # if start_sample >= len(x) or end_sample > len(x) or start_sample >= end_sample:
+    #     return None  # invalid time window
+
+    # # Average position in window
+    # x_window = x[start_sample:end_sample]
+    # y_window = y[start_sample:end_sample]
+
+    # inside_arena_mask = np.sqrt(x_window**2 + y_window**2) <= arena_radius
+    # x_in_arena = x_window[inside_arena_mask]
+    # y_in_arena = y_window[inside_arena_mask]
+
+    # if len(x_in_arena) == 0:
+    #     return None
+    
+    # col_indices = np.floor((x_in_arena + arena_radius) / bin_size).astype(int)
+    # row_indices = np.floor((y_in_arena + arena_radius) / bin_size).astype(int)
+
+    # bin_locations = list(zip(row_indices, col_indices))
+    # unique_bins, counts = np.unique(bin_locations, axis=0, return_counts=True)
+    # max_count_index = np.argmax(counts)
+
+    # most_visited_bin = unique_bins[max_count_index]
+    # row_idx, col_idx = most_visited_bin
+    # if 0 <= row_idx < num_bins_per_axis and 0 <= col_idx < num_bins_per_axis:
+    #     return (row_idx, col_idx)
+    # else:
+    #     return None
     
 
 
@@ -243,3 +291,35 @@ def MUA_PBR(mua_signals, start_time, duration, lambda_map,pos_sample_rate=1250):
         log_poiss_prob.append( spike_rate * np.log(this_lambda_map) - this_lambda_map)
 
     return log_poiss_prob
+
+def MUA_GPR(mua_signals, start_time, duration, lambda_map,pos_sample_rate=1250):
+    '''
+        calculates the gaussian bayes probability to get a specific spike rate on each bin
+        Args:
+            mua_signals(list of arrays): MUA signals for each channel
+            start_time(float): start time in seconds of the section we want to evaluate in seconds
+            duration(int): for how long we want to calculate in seconds
+            lambda_map(matrix): spikes/time of each bin
+            pos_sample_rate(int): helps translate spikes to seconds
+        Returns:
+            matrix: the log of the probability that the measured spike rate was measured in each bin,  with -inf where invalid 
+    '''
+    start_sample = int(start_time * pos_sample_rate)
+    end_sample = int((start_time + duration) * pos_sample_rate)
+
+    log_gauss_prob = [] 
+    gauss_prob = []
+
+    for i, res in enumerate(mua_signals):
+        # Keep only spikes within that sample range
+        window_spikes = res[start_sample:end_sample]
+
+        spike_rate = np.sum(window_spikes)/duration
+
+        this_lambda_map = lambda_map[i] if isinstance(lambda_map, list) else lambda_map
+        gauss_prob.append((1/np.sqrt(2*np.pi*np.var(mua_signals[i])))*np.exp( -(spike_rate-this_lambda_map)**2 / (2 * np.var(mua_signals[i]))))
+
+        
+        log_gauss_prob.append(-0.5*np.log(2*np.pi*np.var(mua_signals[i]))-(spike_rate-this_lambda_map)**2 / (2 * np.var(mua_signals[i])))
+
+    return log_gauss_prob, gauss_prob

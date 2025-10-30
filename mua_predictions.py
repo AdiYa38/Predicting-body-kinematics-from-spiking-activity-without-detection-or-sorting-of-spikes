@@ -7,7 +7,7 @@ import MUA
 from scipy import signal
 # --- Simulation Parameters ---
 ARENA_DIAMETER = 80
-BIN_SIZE = 2
+BIN_SIZE = 1
 RES_SAMPLING_RATE = 20000
 POS_SAMPLING_RATE = 1250
 X_CHANNEL = 124
@@ -15,9 +15,9 @@ Y_CHANNEL = 125
 N_CHANNELS = 136
 DAT_file = "dat/mP79_17.dat"
 EEG_FILE = "mp79_17/mP79_17.eeg"
+MUA_file = "mua_output.dat"
 CHANNEL = 45
-START_SAMPLE = 75*60*RES_SAMPLING_RATE
-
+START_SAMPLE = 90*60*RES_SAMPLING_RATE
 DURATION = 1 # Duration in seconds
 KERNEL_SIZE = 7
 DTYPE = np.int16
@@ -28,9 +28,12 @@ DTYPE = np.int16
 # Load EEG data
 dat_data = data.get_eeg_data(DAT_file, np.int16, 136)
 eeg_data = data.get_eeg_data(EEG_FILE, DTYPE, N_CHANNELS)
+MUA_data = data.get_eeg_data(MUA_file, np.float32, N_CHANNELS)
 
 # Create MUA signal
-mua_signal, og_sig = MUA.create_mua_signal(dat_data, CHANNEL, START_SAMPLE, DURATION, RES_SAMPLING_RATE)
+mua_signal = data.get_eeg_channels(MUA_data, CHANNEL)
+og_sig = data.get_eeg_channels(dat_data, CHANNEL)
+
 
 
 # --- Plotting the signals in time ---
@@ -68,7 +71,6 @@ plt.show()
 
 
 # Load Data
-
 x_values, y_values, x_in, y_in = data.import_position_data(eeg_data, X_CHANNEL, Y_CHANNEL, ARENA_DIAMETER)
 # 3. Create smoothing kernel
 gaussian_kernel = heatmaps.create_gaussian_kernel(size=KERNEL_SIZE)
@@ -76,10 +78,8 @@ gaussian_kernel = heatmaps.create_gaussian_kernel(size=KERNEL_SIZE)
 x_smooth, y_smooth = data.smooth_location(x_values, y_values)
 
 
-
-
 bins_grid = heatmaps.create_bins(BIN_SIZE,ARENA_DIAMETER)
-time_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid, x_values, y_values, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
+time_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
 
 
 
@@ -111,7 +111,7 @@ plt.figure(figsize=(8, 8))
 plt.imshow(spike_map_raw, origin='lower', cmap='jet')
 
 # Add a color bar to show the scale of the spike counts
-plt.colorbar(label='Spike Count')
+plt.colorbar(label='MUA Count')
 
 plt.title(f'Raw MUA Map of channel {CHANNEL} ')
 plt.xlabel('X [cm]')
@@ -125,28 +125,28 @@ fig, axes = plt.subplots(2, 2, figsize=(14, 12))
 fig.suptitle(f"Spatial Analysis Results of channel {CHANNEL}", fontsize=20)
 
 # Helper function for plotting
-def plot_map(ax, data, title, cmap='jet'):
+def plot_map(ax, data, title, name, cmap='jet'):
     data_to_plot = np.copy(data).astype(float)
     if -1 in data:
       data_to_plot[data == -1] = np.nan
     
     max_val = heatmaps.max_val_to_show(data_to_plot)
-    im = ax.imshow(data_to_plot, cmap=cmap, origin='lower', interpolation='nearest', vmax=max_val)
+    im = ax.imshow(data_to_plot, cmap=cmap, origin='lower', interpolation='nearest', vmax=max_val, vmin=2.9)
     ax.set_title(title, fontsize=14)
     ax.set_xlabel("X[cm]")
     ax.set_ylabel("Y[cm]")
-    fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
-    
+    fig.colorbar(im,label=name, ax=ax, fraction=0.046, pad=0.04)
+   
 
 # Plot the four main results
-plot_map(axes[0, 0], spike_map_raw, "Raw MUA Map")
-plot_map(axes[0, 1], time_map_raw, "Raw Time Map")
-plot_map(axes[1, 0], mua_map_smoothed,"Smoothed MUA Map")
-plot_map(axes[1, 1], time_map_smoothed, "Smoothed Time Map")#
+plot_map(axes[0, 0], spike_map_raw, f"Raw MUA Map of channel {CHANNEL} ({ARENA_DIAMETER/BIN_SIZE}x{ARENA_DIAMETER/BIN_SIZE})",'MUA Count')
+plot_map(axes[0, 1], time_map_raw, f"Raw Occupancy Map ({ARENA_DIAMETER/BIN_SIZE}x{ARENA_DIAMETER/BIN_SIZE}) ",'time [s]')
+plot_map(axes[1, 0], mua_map_smoothed,f"Smoothed MUA Map of channel {CHANNEL} ({ARENA_DIAMETER/BIN_SIZE}x{ARENA_DIAMETER/BIN_SIZE})",'MUA Count')
+plot_map(axes[1, 1], time_map_smoothed, f"Smoothed Occupancy Map ({ARENA_DIAMETER/BIN_SIZE}x{ARENA_DIAMETER/BIN_SIZE})",'time [s]')
 
 plt.tight_layout(rect=[0, 0, 1, 0.94])
 plt.subplots_adjust(hspace=0.3, wspace=0.3)
-#plt.show()
+plt.show()
 
 # Optional: Plot the kernel separately
 # fig_kernel, ax_kernel = plt.subplots(figsize=(5, 5))
@@ -155,21 +155,21 @@ plt.subplots_adjust(hspace=0.3, wspace=0.3)
 
 # Plot final retes map
 fig_rts, rts_ax = plt.subplots(figsize=(5, 5))
-plot_title = f"Final Rates Map (channel {CHANNEL})"
-plot_map(rts_ax, final_rates_map,plot_title, cmap='jet')
+plot_title = f"MUA Rate Map (channel {CHANNEL})"
+plot_map(rts_ax, final_rates_map,plot_title,' MUA rate', cmap='jet')
 plt.show()
 
 
 
 # --- Simulation Parameters ---
-ARENA_DIAMETER = 100
-BIN_SIZE = 50
+ARENA_DIAMETER = 80
+BIN_SIZE = 1
 RES_SAMPLING_RATE = 20000
 POS_SAMPLING_RATE = 1250
 X_CHANNEL = 124
 Y_CHANNEL = 125 
 N_CHANNELS = 136
-CHANNELS = np.array([1,50])
+CHANNELS = np.array([7,17,25,33,45,54,66,73,86,98,110,120])
 KERNEL_SIZE = 7
 EEG_FILE = "mp79_17/mP79_17.eeg"
 DTYPE = np.int16
@@ -178,15 +178,16 @@ DTYPE = np.int16
 # 1. Create the base grid
 bins_grid = heatmaps.create_bins(BIN_SIZE,ARENA_DIAMETER)
 time_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
-time_map_smoothed, new_vacants, bins_grid, vacants = heatmaps.smooth_map(None,x_values, y_values,None,BIN_SIZE,time_data=True)
+time_map_smoothed, new_vacants, bins_grid, vacants = heatmaps.smooth_map(None,x_smooth, y_smooth,None,BIN_SIZE,time_data=True)
 
 res_list = []
 final_rates_map = []
-
+mua_maps = []
 for channel in CHANNELS:
     
-    mua_signal, og_sig = MUA.create_mua_signal(dat_data, channel, START_SAMPLE, DURATION, RES_SAMPLING_RATE)
-    og_sig = signal.resample_poly(og_sig, 1250, RES_SAMPLING_RATE)
+    mua_signal = data.get_eeg_channels(MUA_data, channel)
+    og_sig = data.get_eeg_channels(dat_data, channel)
+    #og_sig = signal.resample_poly(og_sig, 1250, RES_SAMPLING_RATE)
     res_list.append(mua_signal)
  
     # --- Run Analysis Pipeline ---
@@ -195,11 +196,24 @@ for channel in CHANNELS:
     spike_map_raw = MUA.bin_mua_count(bins_grid, mua_signal, x_smooth, y_smooth, BIN_SIZE, ARENA_DIAMETER)    
     # 4. Perform smoothing
     mua_map_smoothed,_,_,_ = heatmaps.smooth_map(mua_signal,x_values,y_values,vacants,BIN_SIZE,time_data=False,from_mua=True)
-
+    mua_maps.append(mua_map_smoothed)
     # Final rates map
     rates_map = mua_map_smoothed / time_map_smoothed
+    rates_map = heatmaps.remove_background(rates_map, bins_grid)
     final_rates_map.append(heatmaps.remove_vacants(rates_map, new_vacants))
 
+    plt.figure(figsize=(8, 8))
+    plt.imshow(rates_map, origin='lower', cmap='jet',vmin = 2)
+    plt.colorbar(label='MUA rate')
+    plt.title(f'Rate Map {channel} ')
+    plt.xlabel('X [cm]')
+    plt.ylabel('Y [cm]')
+
+
+plt.show()
+
+mua_min_value = np.min(np.array(final_rates_map))
+print("MUA map min:", mua_min_value)
 
 #=== test prediction success ===
 # Recording parameters
@@ -217,39 +231,48 @@ test_duration = 6.0
 #lambda_map = prediction.lambda_rate_per_bin(mua_map_smoothed, time_map_smoothed)
 prior_map = prediction.bins_prior(time_map_smoothed)
 
-prediction_bins = []
-actual_bins = []
+# prediction_bins = []
+# actual_bins = []
 
-for start in start_times:
-  actual_bin = prediction.get_actual_bin(x_smooth, y_smooth, start, test_duration, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
-  if actual_bin is None:
-        continue
+# for start in start_times:
+#   actual_bin = prediction.get_actual_bin(x_smooth, y_smooth, start, test_duration, BIN_SIZE, ARENA_DIAMETER, POS_SAMPLING_RATE)
+#   if actual_bin is None:
+#         continue
   
-  actual_bins.append(actual_bin)
+#   actual_bins.append(actual_bin)
 
 
-  log_poiss = prediction.MUA_PBR(res_list, start, test_duration, final_rates_map)
-  predicted_bin = prediction.MB_MAP_estimator(log_poiss, prior_map)
-  prediction_bins.append(predicted_bin)
+#log_poiss = prediction.MUA_GPR(res_list, start, test_duration, final_rates_map)
+#   predicted_bin = prediction.MB_MAP_estimator(log_poiss, prior_map)
+#   prediction_bins.append(predicted_bin)
   
   
-accuracy = prediction.prediction_quality(prediction_bins, actual_bins)
-print(f"\nPrediction Accuracy: {accuracy:.2f}% over {len(start_times)} windows")
-
+# accuracy = prediction.prediction_quality(prediction_bins, actual_bins)
+# print(f"\nPrediction Accuracy: {accuracy:.2f}% over {len(start_times)} windows")
 # === plot preditions vs time graph
-durations = np.arange(1, 50, 1)
+durations = np.arange(1, 20, 1)
 accuracies = []
 chance_levels = []
 errors = []
-
+ 
 for duration in durations:
     prediction_bins = []
     actual_bins = []
 
     for start in start_times:
-        log_poiss = prediction.MB_PBR(res_list, start, duration, final_rates_map)
+        log_poiss, poiss = prediction.MUA_GPR(res_list, start, duration, final_rates_map)
         predicted_bin = prediction.MB_MAP_estimator(log_poiss, prior_map)
         prediction_bins.append(predicted_bin)
+
+        # visualize Poisson probabilities
+        # for poiss_map in poiss:
+        #     plt.figure()
+        #     plt.imshow(poiss_map, origin='lower', cmap='jet')
+        #     plt.colorbar(label='Poisson Probability')
+        #     plt.title(f'Poisson Probability Map for Start Time {start}s and Duration {duration}s')
+        #     plt.xlabel('X [cm]')
+        #     plt.ylabel('Y [cm]')
+        #     plt.show()
 
         actual_bin = prediction.get_actual_bin(
             x_smooth, y_smooth, start, duration,
@@ -282,7 +305,7 @@ ax1.plot(durations, accuracies, marker='o', color='b', label="Accuracy")
 ax1.plot(durations, chance_levels, linestyle='--', color='r', label="Chance")
 ax1.set_xlabel('Test Duration (s)')
 ax1.set_ylabel('Prediction Accuracy (%)')
-ax1.set_title('Prediction Accuracy vs Test Duration')
+ax1.set_title(f'Prediction Accuracy vs Test Duration using {len(CHANNELS)} channels, ({ARENA_DIAMETER/BIN_SIZE}x{ARENA_DIAMETER/BIN_SIZE})')
 ax1.grid(True)
 
 # Create a secondary y-axis that shares the same x-axis
@@ -296,7 +319,7 @@ lines2, labels2 = ax2.get_legend_handles_labels()
 ax2.legend(lines + lines2, labels + labels2, loc='best')
 
 plt.tight_layout()
-plt.show()
+# plt.show()
 
 
 
@@ -310,7 +333,7 @@ errors = []
 for bin_size in bin_sizes:
     bins_grid = heatmaps.create_bins(bin_size,ARENA_DIAMETER)
     time_map_raw, vacants = heatmaps.calculate_time_in_bin(bins_grid, x_smooth, y_smooth, bin_size, ARENA_DIAMETER, POS_SAMPLING_RATE)
-    time_map_smoothed, new_vacants, bins_grid, vacants = heatmaps.smooth_map(None,x_values, y_values,None,bin_size,time_data=True)
+    time_map_smoothed, new_vacants, bins_grid, vacants = heatmaps.smooth_map(None,x_smooth, y_smooth,None,bin_size,time_data=True)
     prior_map = prediction.bins_prior(time_map_smoothed)
 
     final_rates_map = []
@@ -329,7 +352,7 @@ for bin_size in bin_sizes:
 
 
     for start in start_times:
-        log_poiss = prediction.MB_PBR(res_list, start, test_duration, final_rates_map)
+        log_poiss,poiss = prediction.MUA_GPR(res_list, start, test_duration, final_rates_map)
         predicted_bin = prediction.MB_MAP_estimator(log_poiss, prior_map)
         prediction_bins.append(predicted_bin)
 
@@ -366,7 +389,7 @@ ax1.plot(bin_sizes, accuracies, marker='o', color='b', label="Accuracy")
 ax1.plot(bin_sizes, chance_levels, linestyle='--', color='r', label="Chance")
 ax1.set_xlabel('Bin Size (cm)')
 ax1.set_ylabel('Prediction Accuracy (%)')
-ax1.set_title('Prediction Accuracy vs Bin Size')
+ax1.set_title(f'Prediction Accuracy vs Bin Size with {len(CHANNELS)} channels, ({ARENA_DIAMETER/BIN_SIZE}x{ARENA_DIAMETER/BIN_SIZE})')
 ax1.grid(True)
 
 # Create a secondary y-axis that shares the same x-axis
