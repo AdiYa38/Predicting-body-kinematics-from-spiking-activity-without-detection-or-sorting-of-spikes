@@ -5,21 +5,32 @@ from matplotlib.animation import FuncAnimation
 import importlib.resources
 from scipy.ndimage import gaussian_filter
 
-def Channels(mouse):
+def Channels(session):
     '''
     Returns the channel mapping for a given mouse identifier
     '''
-    if mouse == 31:
-        x_chan = 59
-        y_chan = 60
-        n_chan = 71
 
-    if mouse == 79:
-        x_chan = 124
-        y_chan = 125
-        n_chan = 136
+    SESSION_CHANNELS = {
+    "mP79_11": (124, 125, 136), 
+    "mP79_12": (124, 125, 136),
+    "mP79_13": (124, 125, 136),
+    "mP79_14": (124, 125, 136),
+    "mP79_15": (124, 125, 136),
+    "mP79_16": (124, 125, 136),
+    "mP79_17": (124, 125, 136), 
+    "mP79_18":(124, 125, 136),
+    "mP79_19":(124, 125, 136),
+    "mP31_18": (59, 60, 71),
+    "mP31_19": (59, 60, 71),
+    "mP31_20": (59, 60, 71)   
+
+    }
+    if session in SESSION_CHANNELS:
+        x_chan, y_chan, n_chan = SESSION_CHANNELS[session]
+        return x_chan, y_chan, n_chan
     
-    return x_chan, y_chan, n_chan
+    else:
+        raise ValueError(f"Session '{session}' not found in CHANNELS mapping.")
 
 def get_eeg_data(filename, dtype, n_channels):
     """
@@ -310,3 +321,4 @@ def SEM (data):
 
 
     
+
