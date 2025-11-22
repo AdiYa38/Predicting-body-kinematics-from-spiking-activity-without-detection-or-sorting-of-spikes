@@ -5,6 +5,22 @@ from matplotlib.animation import FuncAnimation
 import importlib.resources
 from scipy.ndimage import gaussian_filter
 
+def Channels(mouse):
+    '''
+    Returns the channel mapping for a given mouse identifier
+    '''
+    if mouse == 31:
+        x_chan = 59
+        y_chan = 60
+        n_chan = 71
+
+    if mouse == 79:
+        x_chan = 124
+        y_chan = 125
+        n_chan = 136
+    
+    return x_chan, y_chan, n_chan
+
 def get_eeg_data(filename, dtype, n_channels):
     """
     Reads EEG data from a binary file and returns the data as a numpy array.
@@ -272,6 +288,24 @@ def plot_mouse_animation(x, y, start_time_minutes, duration_seconds,title, sampl
     )
 
     plt.show()
+
+    
+
+
+def SEM (data):
+    '''
+    Calculate standard Error of the Mean of a signal
+    Args:
+        signal(array of arrays): input signals in an array
+    Returns:
+       SEM(array): mean SEM of the signal
+      
+    '''
+   
+    var = np.var(data)
+    SEM = np.sqrt(var)/ np.sqrt(len(data))
+
+    return SEM
 
 
 
