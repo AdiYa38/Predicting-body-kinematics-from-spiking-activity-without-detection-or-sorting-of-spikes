@@ -433,14 +433,14 @@ def smooth_map(data_array, x_values, y_values,vacants, BIN_SIZE = 10,time_data =
     data_matrix_sized, new_vacants, bins_grid = change_grid(data_matrix_smoothed, BIN_SIZE, ARENA_DIAMETER, vacants, init_bin_size)
     return data_matrix_sized, new_vacants, bins_grid,vacants
 
-def occupancy_map (SESSION, bin_size, DTYPE = np.int16, N_CHANNELS = 136, X_CHANNEL = 124, Y_CHANNEL = 125, 
+def occupancy_map (SESSION, bin_size, is_mP11 = False, DTYPE = np.int16, N_CHANNELS = 136, X_CHANNEL = 124, Y_CHANNEL = 125, 
                    KERNEL_SIZE = 7, ARENA_DIAMETER = arena_curr_diam, POS_SAMPLING_RATE = 1250):
     eeg_data = data.get_eeg_data(f"data\{SESSION}\{SESSION}.eeg", DTYPE, N_CHANNELS)
     x_values, y_values, x_in, y_in = data.import_position_data(eeg_data, X_CHANNEL, Y_CHANNEL, ARENA_DIAMETER, SESSION)
 
     # 1. Create the base grid
     init_bin_size = 1
-    bins_grid_1cm = create_bins(init_bin_size, arena_diameter_cm=ARENA_DIAMETER)
+    bins_grid_1cm = create_bins(init_bin_size, is_mP11, arena_diameter_cm=ARENA_DIAMETER)
 
     # 2. Calculate spike and time maps
     occupancy_map_raw, vacants = calculate_time_in_bin(bins_grid_1cm, x_values, y_values, init_bin_size, ARENA_DIAMETER, POS_SAMPLING_RATE)
