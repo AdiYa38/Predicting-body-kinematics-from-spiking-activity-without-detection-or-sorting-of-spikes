@@ -15,7 +15,7 @@ N_CHANNELS = 136
 CELL_ID = 11
 TETRODE_ID = 4
 KERNEL_SIZE = 7
-SESSION = "mP79_17"
+SESSION = "mP79_11"
 EEG_FILE = f"data\{SESSION}\{SESSION}.eeg"
 CLU_FILE = f"data\{SESSION}\{SESSION}.clu"
 RES_FILE = f"data\{SESSION}\{SESSION}.res"
@@ -45,7 +45,7 @@ plt.axis("equal")
 plt.grid(True)
 plt.show()
 """
-final_rates_map, bins_grid, occupancy_map = heatmaps.rates_map(BIN_SIZE, CELL_ID, x_values, y_values, tet_res, clu)
+final_rates_map, bins_grid = heatmaps.rates_map(BIN_SIZE, CELL_ID, x_values, y_values, tet_res, clu, is_mP11 = True)
 
 # ===================================================================
 # Visualization
@@ -90,4 +90,5 @@ for x, y in zip(side_lengths, expected_distances):
     plt.text(x, y, f'{y:.2f}', ha='left', va='top')
 
 # שלב 5: הצגת הגרף
+
 plt.show()"""
