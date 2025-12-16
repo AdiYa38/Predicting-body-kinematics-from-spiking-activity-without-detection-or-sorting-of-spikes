@@ -411,10 +411,10 @@ def rates_map(bin_size, cell_id, x_values, y_values, tet_res, clu, is_mP11 = Fal
     return final_rates_map, bins_grid
 
 
-def smooth_map(data_array, x_values, y_values,vacants, BIN_SIZE = 10,time_data = False, from_mua = False,
+def smooth_map(data_array, x_values, y_values,vacants, is_mP11 = False, BIN_SIZE = 10,time_data = False, from_mua = False,
                 KERNEL_SIZE=7, ARENA_DIAMETER=arena_curr_diam, POS_SAMPLING_RATE = 1250):
     init_bin_size = 1 
-    bins_grid_1cm = create_bins(init_bin_size, arena_diameter_cm=ARENA_DIAMETER)
+    bins_grid_1cm = create_bins(init_bin_size, is_mP11, arena_diameter_cm=ARENA_DIAMETER)
     gaussian_kernel = create_gaussian_kernel(size=KERNEL_SIZE)
     x_smooth, y_smooth = data.smooth_location(x_values, y_values)
   
