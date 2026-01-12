@@ -1,26 +1,45 @@
-This directory contains all the code files for this project.
+# Topographic Organization in the Hippocampus
 
-This project wad made in 3 parts:
-  -general
-  - Unit activity
-  - MUA
+This repository contains the codebase for analyzing neurophysiological data, specifically focusing on Unit Activity and Multi-Unit Activity (MUA). The project is structured to handle data importation, rate map generation, and location prediction (decoding).
 
-*General- 
-contains files that are the base of the project:
-  -data.py: contains functions to import the data from the given data files.
-  -heatmaps.py: contains functions that handle all operations done on the maps.
-  -prediction.py: contains functions that needed in the location prediction process.
-  -test.py: a run file to visualize rate map creation process and test prediction using one unit.
-  -test_prediction.py: a run file to test prediction using multiple units.
+## Project Structure
 
-  *Unit activity-
+The codebase is organized into three main modules:
+1. **General** (Core utilities and base logic)
+2. **Unit Activity** (Single unit analysis)
+3. **MUA** (Multi-Unit Activity analysis)
+
+---
+
+### 1. General (Core Modules)
+These files form the foundation of the project, handling data ingestion, core calculations, and primary testing.
+
+* **`data.py`**
+    Functions for importing and preprocessing raw neurophysiological data from source files.
+* **`heatmaps.py`**
+    Core logic for generating, smoothing, and manipulating rate maps (heatmaps).
+* **`prediction.py`**
+    Algorithms and helper functions used for the location prediction  process.
+* **`test.py`**
+    A visualization script to inspect the rate map creation process and test the prediction pipeline using a single unit.
+* **`test_prediction.py`**
+    A comprehensive test script for running location predictions across multiple units.
+
+### 2. Unit Activity
+*Contains scripts specific to single-unit analysis.*
 
 
 
-  *MUA-
-  Contains files used in the analysis of MUA.
-    -MUA.py: contains function to create and analyze MUA signals.
-    - mua_test.py: a run file to test MUA creation process, and test consistant areas between differnt maps
-    - mua_predictions.py: a run file to test predictions using MUA signals.
-    - MUA_corr.py: a run file that creates an xl file of correlation matrix between MUA channels
-    - mua_ripple.py: a run file that removes ripple events from channels and prints the new rate maps.
+### 3. MUA (Multi-Unit Activity)
+Files dedicated to the generation, analysis, and decoding of MUA signals.
+
+* **`MUA.py`**
+    Functions to create MUA signals from raw recordings and perform basic analysis.
+* **`mua_test.py`**
+    Test script for the MUA generation process. It also evaluates spatial consistency between different maps.
+* **`mua_predictions.py`**
+    Execution script for testing location predictions based specifically on MUA signals.
+* **`MUA_corr.py`**
+    Generates a correlation matrix between different MUA channels and exports the results to an Excel file.
+* **`mua_ripple.py`**
+    A specialized script that detects and removes ripple events from channels, then recalculates and prints the updated rate maps.
