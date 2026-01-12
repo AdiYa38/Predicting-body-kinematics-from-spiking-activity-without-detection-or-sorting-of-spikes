@@ -407,7 +407,7 @@ fig, ax1 = plt.subplots(figsize=(8, 5))
 # Plot accuracy and chance on the primary y-axis (ax1)
 ax1.plot(bin_sizes, accuracies, marker='o', color='b', label="Accuracy")
 ax1.plot(bin_sizes, chance_levels, linestyle='--', color='r', label="Chance")
-ax1.fill_between(chance_levels,  bottom,  top,  color='red',  alpha=0.3, zorder=1, label='SEM')
+ax1.fill_between(bin_sizes,  bottom,  top,  color='red',  alpha=0.3, zorder=1, label='SEM')
 ax1.set_xlabel('Bin Size (cm)')
 ax1.set_ylabel('Prediction Accuracy (%)')
 ax1.set_title(f'Prediction Accuracy vs Bin Size with {len(CHANNELS)} channels, ({ARENA_DIAMETER/BIN_SIZE}x{ARENA_DIAMETER/BIN_SIZE})')
@@ -425,4 +425,5 @@ ax2.legend(lines + lines2, labels + labels2, loc='best')
 
 plt.tight_layout()
 plt.show()
+
 
