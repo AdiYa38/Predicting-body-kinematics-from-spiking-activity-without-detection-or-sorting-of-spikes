@@ -19,4 +19,8 @@ contains files that are the base of the project:
 
   *MUA-
   Contains files used in the analysis of MUA.
-    -MUA.py: 
+    -MUA.py: contains function to create and analyze MUA signals.
+    - mua_test.py: a run file to test MUA creation process, and test consistant areas between differnt maps
+    - mua_predictions.py: a run file to test predictions using MUA signals.
+    - MUA_corr.py: a run file that creates an xl file of correlation matrix between MUA channels
+    - mua_ripple.py: a run file that removes ripple events from channels and prints the new rate maps.
