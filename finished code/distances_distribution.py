@@ -6,18 +6,16 @@ import matplotlib.pyplot as plt
 ARENA_DIAMETER = 80
 BIN_SIZE = 1
 r_squared_threshold = 0.01
-# יצירת רשימת הסשנים
 sessions = ["mP79_11", "mP79_12", "mP79_13", "mP79_14", "mP79_15", "mP79_16", "mP79_17", "mP31_18", "mP31_19", "mP31_20"]
 # -----------------
 
 all_data_list = []
 
-# לולאה שעוברת על כל הסשנים ואוספת נתונים
+# Collect data fron all sessions
 for session in sessions:
     filename = f"data/{session}/Centers_{session}_bin{BIN_SIZE}cm.csv"
     try:
         df = pd.read_csv(filename)
-        # הוספת עמודה כדי שנדע מאיזה סשן הגיעה כל נקודה (אופציונלי)
         df['session_id'] = session
         all_data_list.append(df)
         print(f"Successfully loaded {len(df)} fits from: {session}")
@@ -28,10 +26,10 @@ if not all_data_list:
     print("No data files were found. Exiting.")
     exit()
 
-# איחוד כל הטבלאות לטבלה אחת גדולה
+# Combine to one table
 df_combined = pd.concat(all_data_list, ignore_index=True)
 
-# --- FILTERING STEP ---
+# Filter by n_r_squared
 df_filtered = df_combined[df_combined['n_r_squared'] > r_squared_threshold]
 print(f"\nTotal filtered data across all sessions: {len(df_filtered)} fits have R^2 > {r_squared_threshold}")
 
@@ -40,8 +38,7 @@ if len(df_filtered) == 0:
     exit()
 # ----------------------
 
-# הצגת המרכזים (Centers Logic)
-# 2. Extract coordinates and calculate statistics (using filtered data)
+# Extract coordinates and calculate statistics (using filtered data)
 x_centers = df_filtered['center_x_cm'].values
 y_centers = df_filtered['center_y_cm'].values
 
