@@ -65,7 +65,7 @@ arena_circle = plt.Circle((arena_center, arena_center), arena_radius,
                             color='black', fill=False, linestyle='--', label='Arena Boundary')
 ax.add_artist(arena_circle)
 
-# Scatter plot of cell centers - משתמש בצבעים שונים לפי סשן אם תרצה, או צבע אחיד
+# Scatter plot of cell centers
 plt.scatter(x_centers, y_centers, alpha=0.5, s=20,
             label=f'Place Field Centers (n={len(x_centers)})')
 
