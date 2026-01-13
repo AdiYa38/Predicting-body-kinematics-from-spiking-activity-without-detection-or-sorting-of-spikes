@@ -16,7 +16,7 @@ DTYPE = np.int16
 KERNEL_SIZE = 7
 show = False
 BIN_SIZE = 1
-PERMUTATIONS_N = 20  # מספר הפרמוטציות
+PERMUTATIONS_N = 20  # To calc unbiased R squared
 
 # --- Helper Functions ---
 
@@ -59,7 +59,7 @@ def create_centers_density_map(df, bin_size, arena_diameter):
 
 # --- Main Logic ---
 
-# רשימות לשמירת התוצאות
+# Lists to save results
 results_observed = []
 results_chance = []
 results_diff = []
@@ -89,10 +89,8 @@ for sn in SESSION_NUM:
         center_y, center_x = rows / 2, cols / 2
         radius_bins = (ARENA_DIAMETER / 2) / BIN_SIZE
         
-        # מסכה גאומטרית (בתוך העיגול)
+        # Permute inside arena
         mask_inside = (x_grid - center_x)**2 + (y_grid - center_y)**2 <= radius_bins**2
-        
-        # מסכה לנתונים תקינים (גם בתוך העיגול וגם עם מידע תקין ב-occupancy)
         valid_indices = mask_inside & (occupancy_map != -1) & (~np.isnan(occupancy_map))
         
         if np.sum(valid_indices) == 0:
@@ -107,27 +105,20 @@ for sn in SESSION_NUM:
         obs_mi = calc_mutual_information(vec_centers, vec_occupancy, bins=10)
         
         # --- B. Calculate Chance MI (Permutations) ---
-        
-        # הכנת מפת המרכזים לפרמוטציה:
-        # הפונקציה create_permutations צריכה לדעת מה "בחוץ" כדי לא לערבב לשם נתונים.
-        # נסמן את כל מה שמחוץ למסכה הגאומטרית כ 1-
+        # Create permutations
         centers_map_for_perm = centers_map.copy()
         centers_map_for_perm[~mask_inside] = -1
-        
-        # יצירת פרמוטציות
         perm_maps = create_permutations(centers_map_for_perm, N=PERMUTATIONS_N)
         
         perm_mi_values = []
         for p_map in perm_maps:
-            # חילוץ הוקטור המעורבב באותם אינדקסים תקינים בדיוק כמו המקורי
             vec_p = p_map[valid_indices]
-            # חישוב MI מול ה-Occupancy המקורי
             perm_mi_values.append(calc_mutual_information(vec_p, vec_occupancy, bins=10))
             
         avg_chance_mi = np.mean(perm_mi_values)
         diff_mi = obs_mi - avg_chance_mi
         
-        # שמירת תוצאות
+        # Save results
         results_observed.append(obs_mi)
         results_chance.append(avg_chance_mi)
         results_diff.append(diff_mi)
@@ -143,17 +134,15 @@ for sn in SESSION_NUM:
 
 # --- Visualization ---
 
-x = np.arange(len(session_names))  # מיקומי ה-X
-width = 0.25  # רוחב העמודות
+x = np.arange(len(session_names))
+width = 0.25
 
 fig, ax = plt.subplots(figsize=(12, 7))
-
-# יצירת העמודות
+ # Plot
 rects1 = ax.bar(x - width, results_observed, width, label='Observed MI', color='cornflowerblue')
 rects2 = ax.bar(x, results_chance, width, label=f'Chance MI (Avg {PERMUTATIONS_N} Perms)', color='lightgray')
 rects3 = ax.bar(x + width, results_diff, width, label='Difference (Obs - Chance)', color='mediumseagreen')
 
-# עיצוב הגרף
 ax.set_ylabel('Mutual Information (bits)', fontsize=12)
 ax.set_xlabel('Session', fontsize=12)
 ax.set_title(f'Mutual Information Analysis: Centers vs. Occupancy\n(Bin Size: {BIN_SIZE}cm)', fontsize=16)
@@ -162,7 +151,7 @@ ax.set_xticklabels(session_names)
 ax.legend()
 ax.grid(axis='y', linestyle='--', alpha=0.5)
 
-# פונקציה להוספת תוויות מעל העמודות
+# Labels
 def autolabel(rects):
     for rect in rects:
         height = rect.get_height()
