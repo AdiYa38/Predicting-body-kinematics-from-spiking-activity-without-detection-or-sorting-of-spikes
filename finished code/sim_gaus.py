@@ -40,9 +40,10 @@ def fit_gaussians(BIN_SIZE, SESSION, show=False):
     x_values, y_values, x_in, y_in = data.import_position_data(eeg_data, X_CHANNEL, Y_CHANNEL, ARENA_DIAMETER, SESSION)
     cell_maps = []
 
-    for shank in [1,2,3]: #range(1, 13):
+    # Change ranges to pick units
+    for shank in range(1, 13):
         tet_res, clu = data.get_tetrode_spike_times(CLU_FILE, RES_FILE, shank, POS_SAMPLING_RATE, RES_SAMPLING_RATE)
-        for cell in [1,2,3,10]:#range(2, 20):
+        for cell in range(2, 20):
             final_rates_map, bins_grid = heatmaps.rates_map(BIN_SIZE, cell, x_values, y_values, tet_res, clu, SESSION)
             # If the unit does not exist in the shank, continue
             if (final_rates_map is None):
@@ -111,10 +112,8 @@ def fit_gaussians(BIN_SIZE, SESSION, show=False):
             original_map, _, _, bins_grid = cell_maps[matrix_index]
             original_map = original_map.copy()
 
-            # --- שינוי 1: חישוב ערכי המינימום והמקסימום להצגה ---
-            # נשתמש בערכים אלו בכל המפות כדי לשמור על סקאלה אחידה
             max_val = heatmaps.max_val_to_show(original_map)
-            vmin = 0  # הנחה שקצב הירי אינו שלילי
+            vmin = 0 
 
             if fit['params'] is not None:
                 fit_params = fit['params']
@@ -128,9 +127,6 @@ def fit_gaussians(BIN_SIZE, SESSION, show=False):
                 X, Y = create_grid(N)
                 fitted_gaussian_map = gaussian_2d((X, Y), *fit_params)
                 
-                # --- שינוי 2: הסרת החישוב הישן של vmin/vmax ---
-                # השורות שהיו כאן הוסרו כי הגדרנו vmin ו-max_val מחוץ לתנאי
-                
                 vacant_mask = (original_map == -1) | np.isnan(original_map)
                 original_map[vacant_mask] = np.nan
                 fitted_gaussian_map[vacant_mask] = np.nan
@@ -139,7 +135,6 @@ def fit_gaussians(BIN_SIZE, SESSION, show=False):
                 fig.suptitle(f'Shank: {shank_id}, Clu: {cell_id}\nR²: {fit["r_squared"]:.4f}', fontsize=16)
                 
                 # Plot 1: Original Firing Rate Map
-                # --- שינוי 3: שימוש ב-max_val שהוגדר מראש ---
                 im1 = ax1.imshow((heatmaps.remove_background(original_map, bins_grid)), cmap='jet', origin='lower', vmin=vmin, vmax=max_val, extent=extent_in_cm)
                 ax1.set_title('Original Firing Rate Map')
                 ax1.set_xlabel('X [cm]')
@@ -147,7 +142,6 @@ def fit_gaussians(BIN_SIZE, SESSION, show=False):
                 ax1.plot(center_x_cm, center_y_cm, '+', color='red', markersize=12, markeredgewidth=2)
                 
                 # Plot 2: Fitted Gaussian Model
-                # --- שינוי 3: שימוש ב-max_val שהוגדר מראש ---
                 ax2.imshow((heatmaps.remove_background(fitted_gaussian_map, bins_grid)), cmap='jet', origin='lower', vmin=vmin, vmax=max_val, extent=extent_in_cm)
                 ax2.set_title(f'Fitted Gaussian Model\nCenter: ({center_x_cm:.2f}, {center_y_cm:.2f}) cm')
                 ax2.set_xlabel('X [cm]')
@@ -163,7 +157,6 @@ def fit_gaussians(BIN_SIZE, SESSION, show=False):
                 
                 vacant_mask = (original_map == -1) | np.isnan(original_map)
                 original_map[vacant_mask] = np.nan
-                # --- שינוי 3: שימוש ב-max_val שהוגדר מראש ---
                 im = ax.imshow(original_map, cmap='jet', origin='lower', extent=extent_in_cm, vmin=vmin, vmax=max_val)
                 ax.set_xlabel('X [cm]')
                 ax.set_ylabel('Y [cm]')
