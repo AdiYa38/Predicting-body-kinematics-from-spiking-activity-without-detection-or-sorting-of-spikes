@@ -2,28 +2,27 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 
-# --- הגדרות ---
+# Constants
 BIN_SIZE = 1
 r_squared_threshold = 0.4
-# רשימת הסשנים לעיבוד
 SESSIONS = ["mP79_11", "mP79_12", "mP79_13", "mP79_14","mP79_15", "mP79_16", "mP79_17", "mP31_18", "mP31_19", "mP31_20"] 
 # -------------
 
-# רשימות גלובליות לאיסוף הזוגות לגרף
+# Pairs lists by quality
 all_low_low_pairs = []   
 all_mixed_pairs = []     
 all_high_high_pairs = [] 
 
-# --- הוספה: רשימה לאיסוף נתונים לשמירה ב-CSV ---
+# list for all pairs
 all_pairs_data = []
 
 print(f"Starting analysis for sessions: {SESSIONS}")
 
-# לולאה על כל סשן בנפרד
+# Calculate pairs in each session seperatly
 for SESSION in SESSIONS:
     print(f"\nProcessing Session: {SESSION}...")
     
-    # 1. טעינת מיקומי יחידות (Anatomical Locations)
+    # Load anatomical location data
     loc_dict = {} 
     try:
         loc_file = f'data/{SESSION}/{SESSION}_unit_loc.csv'
@@ -40,7 +39,7 @@ for SESSION in SESSIONS:
         print(f"Warning: Unit location file for {SESSION} not found. Skipping session.")
         continue
 
-    # פונקציה פנימית לחישוב מרחק אנטומי
+    # Claculate anatomical distance
     def calc_anatomical_distance(shank1, unit1, shank2, unit2):
         if ((shank1 <= 6 and shank2 <= 6) or (shank1 >= 7 and shank2 >= 7)):
             dx_shank = np.abs(shank1 - shank2) * 200 
@@ -60,7 +59,7 @@ for SESSION in SESSIONS:
         else:
             return np.nan
 
-    # 2. טעינת נתוני מרכזי השדות
+    # Load centers data
     center_file = f"data/{SESSION}/Centers_{SESSION}_bin{BIN_SIZE}cm.csv"
     fits_data = []
     
@@ -73,7 +72,7 @@ for SESSION in SESSIONS:
         print(f"  Warning: Center file '{center_file}' not found. Skipping session.")
         continue
 
-    # 3. חישוב מרחקים
+    # Calculate centers distances
     pairs_count = 0
     for i in range(len(fits_data)): 
         for j in range(i + 1, len(fits_data)):
@@ -88,12 +87,11 @@ for SESSION in SESSIONS:
             if np.isnan(anat_dist):
                 continue 
 
-            # חישוב מרחק אוקלידי
             dx = r1['center_x_cm'] - r2['center_x_cm']
             dy = r1['center_y_cm'] - r2['center_y_cm']
             eucl_dist = np.sqrt(dx**2 + dy**2)
 
-            # סיווג
+            # Classify quality
             nrs1 = r1['n_r_squared']
             nrs2 = r2['n_r_squared']
             
@@ -102,10 +100,9 @@ for SESSION in SESSIONS:
 
             point_data = (anat_dist, eucl_dist)
             
-            # קביעת תווית האיכות עבור ה-CSV
             quality_label = "Low_Low"
             
-            # הוספה לרשימות הגלובליות לגרף
+            # Save into lists
             if is_good1 and is_good2:
                 all_high_high_pairs.append(point_data)
                 quality_label = "High_High"
@@ -116,7 +113,7 @@ for SESSION in SESSIONS:
                 all_low_low_pairs.append(point_data)
                 quality_label = "Low_Low"
             
-            # --- הוספה: שמירת הנתונים ל-CSV ---
+            # Add result to the file data
             pair_info = {
                 'session': SESSION,
                 'shank1': shank1,
@@ -136,7 +133,7 @@ for SESSION in SESSIONS:
             pairs_count += 1
     print(f"  Calculated {pairs_count} pairs for {SESSION}.")
 
-# --- הוספה: שמירה לקובץ CSV ---
+# Save csv
 if all_pairs_data:
     output_filename = f"Centers_pairs_Nth_{r_squared_threshold}.csv"
     print(f"\nSaving all pairs data to: {output_filename}...")
@@ -147,11 +144,11 @@ else:
     print("\nNo pairs found to save.")
 # -----------------------------
 
-# 4. יצירת הגרף המאוחד
+# Create plot
 print("\nPlotting combined data...")
 plt.figure(figsize=(12, 10))
 
-# הגדרות עיצוב
+# Design plot values
 SMALL_SIZE = 1.5   
 MAIN_SIZE = 2.5    
 ALPHA_BG = 0.3     
