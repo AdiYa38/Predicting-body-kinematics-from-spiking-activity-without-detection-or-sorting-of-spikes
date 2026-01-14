@@ -11,11 +11,12 @@ POS_SAMPLING_RATE = 1250
 X_CHANNEL = 124
 Y_CHANNEL = 125
 N_CHANNELS = 136
-EEG_FILE = "mp79_17/mP79_17.eeg"
+SESSIONS = ["mP79_11", "mP79_12", "mP79_13", "mP79_14", "mP79_15", 
+            "mP79_16", "mP79_17"]
 DTYPE = np.int16
 KERNEL_SIZE = 7
 show = False
-HIGH_NRS_T = 0.6
+HIGH_NRS_T = 0.5
 
 def gaussian_2d(coords, A, x0, y0, sigma_x, sigma_y, offset):
     """Calculates the value of a 2D Gaussian function at given coordinates."""
@@ -117,27 +118,31 @@ def calc_avg_R_square(map_matrix, BIN_SIZE, N=20):
     
     return np.average(R_squares)
 
-# Read data of unit
-gaussian_kernel = heatmaps.create_gaussian_kernel(size=KERNEL_SIZE)
-eeg_data = data.get_eeg_data(EEG_FILE, DTYPE, N_CHANNELS)
-x_values, y_values, x_in, y_in = data.import_position_data(eeg_data, X_CHANNEL, Y_CHANNEL, ARENA_DIAMETER)
-cell_maps = []
+for SESSION in SESSIONS: 
+    EEG_FILE = f"data\{SESSION}\{SESSION}.eeg"
+    CLU_FILE = f"data\{SESSION}\{SESSION}.clu"
+    RES_FILE = f"data\{SESSION}\{SESSION}.res"
 
-# Create rates maps
-all_bin_sizes = [20, 16, 10, 8, 5, 4, 2, 1]
-for shank in range(1, 13):
-    tet_res, clu = data.get_tetrode_spike_times("mp79_17/mP79_17.clu.", "mp79_17/mP79_17.res.", shank, POS_SAMPLING_RATE, RES_SAMPLING_RATE)
-    for cell in range(2, 20):
-        
-        for BIN_SIZE in all_bin_sizes:
-            final_rates_map, grid = heatmaps.rates_map(BIN_SIZE, cell, x_values, y_values, tet_res, clu)
-            # If the unit does not exist in the shank, continue
-            if (final_rates_map is None):
-                print(f"unit {cell} does not exist in shank {shank}")
-                break
+    # Read data of unit
+    gaussian_kernel = heatmaps.create_gaussian_kernel(size=KERNEL_SIZE)
+    eeg_data = data.get_eeg_data(EEG_FILE, DTYPE, N_CHANNELS)
+    x_values, y_values, x_in, y_in = data.import_position_data(eeg_data, X_CHANNEL, Y_CHANNEL, ARENA_DIAMETER, SESSION)
+    cell_maps = []
 
-            cell_maps.append([final_rates_map, cell, shank, BIN_SIZE])
-            print(f"Unit {shank}.{cell}: Rates map for bin size {BIN_SIZE} created")
+    # Create rates maps
+    all_bin_sizes = [20, 16, 10, 8, 5, 4, 2, 1]
+    for shank in  range(1, 13):
+        tet_res, clu = data.get_tetrode_spike_times(CLU_FILE, RES_FILE, shank, POS_SAMPLING_RATE, RES_SAMPLING_RATE)
+        for cell in range(2, 20):
+            for BIN_SIZE in all_bin_sizes:
+                final_rates_map, grid = heatmaps.rates_map(BIN_SIZE, cell, x_values, y_values, tet_res, clu, SESSION)
+                # If the unit does not exist in the shank, continue
+                if (final_rates_map is None):
+                    print(f"unit {cell} does not exist in shank {shank}")
+                    break
+
+                cell_maps.append([final_rates_map, cell, shank, BIN_SIZE, SESSION])
+                print(f"Session {SESSION}, Unit {shank}.{cell}: Rates map for bin size {BIN_SIZE} created")
 
 # 2. Gaussian Fitting using for each map
 gaussian_fits = []
@@ -146,7 +151,7 @@ fits_count = np.zeros(len(all_bin_sizes))
 high_NRS_sums = np.zeros(len(all_bin_sizes))
 high_fits_count = np.zeros(len(all_bin_sizes))
 for i, item in enumerate(cell_maps):
-    heatmap_data, cell_id, shank_id, BIN_SIZE = item
+    heatmap_data, cell_id, shank_id, BIN_SIZE, session = item
 
     # Create fit
     popt, z_data, coords_data, error_msg = fit_gaussian_to_map(heatmap_data, BIN_SIZE)
@@ -172,7 +177,7 @@ for i, item in enumerate(cell_maps):
         if (n_r_squared >= HIGH_NRS_T):
             high_NRS_sums[size_idx] += n_r_squared
             high_fits_count[size_idx] += 1
-        print(f"Bin size {BIN_SIZE}, Clu {cell_id} of shank {shank_id} has normalized R-squared: {n_r_squared:.4f}")
+        print(f"Session {session}, Bin size {BIN_SIZE}, Clu {cell_id} of shank {shank_id} has normalized R-squared: {n_r_squared:.4f}")
 
 # Calculate average NRS for each bin size
 avg_NRS = NRS_sums / fits_count
